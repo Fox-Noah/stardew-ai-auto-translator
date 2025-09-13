@@ -347,6 +347,10 @@ class StardewValleyTranslator:
             try:
                 self.root.after(0, self.log_message, self.get_ui_text("initializing_model"))
                 
+                self.root.after(0, self.refresh_mod_list)
+                
+                time.sleep(0.1)
+                
                 if self.ollama_manager.check_server_status():
                     saved_model = self.config_manager.get_ollama_model()
                     self.ollama_model = saved_model if saved_model else "qwen2.5-coder:14b"
@@ -378,8 +382,6 @@ class StardewValleyTranslator:
                     threading.Thread(target=load_models, daemon=True).start()
                 else:
                     self.root.after(0, self.log_message, self.get_ui_text("ollama_not_installed"), "ERROR")
-                
-                self.root.after(100, self.refresh_mod_list)
                 
             except Exception as e:
                 self.root.after(0, self.log_message, f"初始化失败: {str(e)}", "ERROR")

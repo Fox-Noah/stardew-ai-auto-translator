@@ -317,9 +317,19 @@ class FileManager:
                     self.app.original_listbox.delete(0, 'end')
                 if hasattr(self.app, 'translation_listbox'):
                     self.app.translation_listbox.delete(0, 'end')
+                self.app.current_file_index = -1
                 return
+            
+            if hasattr(self.app, 'available_files') and self.app.available_files:
+                for i, file_info in enumerate(self.app.available_files):
+                    if file_info['name'] == selected_file:
+                        self.app.current_file_index = i
+                        break
+                else:
+                    self.app.current_file_index = -1
                 
-            self.app.log_message(f"切换到文件: {selected_file}")
+            switch_text = self.app.ui_text_manager.get_text("switch_to_file")
+            self.app.log_message(switch_text.format(selected_file, getattr(self.app, 'current_file_index', -1)))
             threading.Thread(target=self._load_comparison_data_async, daemon=True).start()
             
         except Exception as e:

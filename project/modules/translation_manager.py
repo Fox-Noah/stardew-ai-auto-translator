@@ -206,12 +206,13 @@ class TranslationManager:
             if next_index < len(self.main_app.available_files):
                 self.main_app.current_file_index = next_index
                 
-                self.main_app.file_combo.current(next_index)
-                
                 next_file = self.main_app.available_files[next_index]
+                
+                self.main_app.gui_manager.parent.file_combo.set(next_file['name'])
+                
                 self.main_app.log_message(f"自动切换到下一个文件: {next_file['name']}")
                 
-                self.main_app.on_file_change()
+                self.main_app.file_manager.on_file_change()
                 
                 def delayed_auto_translate():
                     if not self.is_translating:
