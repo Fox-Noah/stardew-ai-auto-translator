@@ -62,7 +62,7 @@ class OllamaManager:
                         print("模型列表刷新成功")
                 else:
                     if self.main_app:
-                        self.main_app.log_message("Ollama服务未运行", "ERROR")
+                        self.main_app.log_message(self.main_app.get_ui_text("ollama_not_installed"), "ERROR")
                     else:
                         print("Ollama服务未运行")
             except Exception as e:

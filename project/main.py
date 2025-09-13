@@ -201,6 +201,29 @@ class StardewValleyTranslator:
         log_entry = f"[{timestamp}] {level}: {message}"
         
         print(log_entry)
+        
+        if hasattr(self, 'log_text'):
+            self.root.after(0, self._append_log_to_gui, log_entry)
+    
+    def _append_log_to_gui(self, log_entry: str):
+        try:
+            if hasattr(self, 'log_text'):
+                self.log_text.config(state=tk.NORMAL)
+                
+                if self.log_text.get("1.0", tk.END).strip():
+                    self.log_text.insert(tk.END, "\n")
+                self.log_text.insert(tk.END, log_entry)
+                
+                self.log_text.see(tk.END)
+                
+                lines = self.log_text.get("1.0", tk.END).split("\n")
+                if len(lines) > 1000:
+                    lines_to_delete = len(lines) - 1000
+                    self.log_text.delete("1.0", f"{lines_to_delete + 1}.0")
+                
+                self.log_text.config(state=tk.DISABLED)
+        except Exception as e:
+            print(f"GUI日志输出失败: {str(e)}")
     
 
     
@@ -354,7 +377,7 @@ class StardewValleyTranslator:
                     
                     threading.Thread(target=load_models, daemon=True).start()
                 else:
-                    self.root.after(0, self.log_message, "Ollama服务未运行", "ERROR")
+                    self.root.after(0, self.log_message, self.get_ui_text("ollama_not_installed"), "ERROR")
                 
                 self.root.after(100, self.refresh_mod_list)
                 

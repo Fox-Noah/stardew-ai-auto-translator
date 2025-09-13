@@ -90,10 +90,13 @@ class StyleManager:
                           background=button_bg,
                           foreground=entry_fg,
                           borderwidth=1)
-            style.map('TCombobox',
-                     fieldbackground=[('readonly', entry_bg)],
-                     selectbackground=[('readonly', select_bg)],
-                     selectforeground=[('readonly', select_fg)])
+            style.map('TCombobox', 
+                     fieldbackground=[('readonly', entry_bg)], 
+                     selectbackground=[('readonly', select_bg)], 
+                     selectforeground=[('readonly', select_fg)], 
+                     foreground=[('readonly', entry_fg), 
+                               ('!focus', entry_fg), 
+                               ('focus', entry_fg)])
             
             style.configure('TEntry',
                           fieldbackground=entry_bg,

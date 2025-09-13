@@ -20,9 +20,56 @@ class GUIManager:
         
         self.current_selected_index = 0
         
+        self.comboboxes = []
+        
+        self.root.bind('<Button-1>', self._on_global_click, add='+')
+        
     def set_callbacks(self, callbacks: Dict[str, Callable]) -> None:
         self.callbacks = callbacks
     
+    def _on_global_click(self, event):
+        try:
+            clicked_widget = event.widget
+            
+            if hasattr(self.parent, 'translation_listbox') and clicked_widget == self.parent.translation_listbox:
+                return
+            
+            is_combo_click = False
+            for combo in self.comboboxes:
+                if combo and combo.winfo_exists() and clicked_widget == combo:
+                    is_combo_click = True
+                    break
+            
+            if not is_combo_click:
+                self.root.after(100, self._close_all_combos)
+        except Exception as e:
+            pass
+    
+    def _close_all_combos(self):
+        try:
+            for combo in self.comboboxes:
+                if combo and combo.winfo_exists():
+                    try:
+                        combo.event_generate('<Escape>')
+                        combo.selection_clear()
+                        self.root.focus_set()
+                    except:
+                        pass
+        except:
+            pass
+    
+    def _is_child_of(self, widget, parent):
+        try:
+            current = widget
+            while current:
+                if current == parent:
+                    return True
+                current = current.master
+            return False
+        except:
+            return False
+    
+
     def on_original_select(self, event):
         try:
             selection = self.parent.original_listbox.curselection()
@@ -145,6 +192,7 @@ class GUIManager:
         language_combo.pack(side=tk.LEFT, padx=(0, 12))
         language_combo.bind('<<ComboboxSelected>>', self.parent.on_language_change)
         language_combo.bind('<MouseWheel>', self.on_combobox_mousewheel)
+        self.comboboxes.append(language_combo)
         
         self.parent.model_label = ModernLabel(config_content, 
                                              text=self.parent.get_ui_text("translation_model"),
@@ -154,6 +202,7 @@ class GUIManager:
                                        state="readonly", width=20, font=style_manager.get_font('default'))
         self.parent.model_combo.pack(side=tk.LEFT, padx=(0, 12))
         self.parent.model_combo.bind('<MouseWheel>', self.on_combobox_mousewheel)
+        self.comboboxes.append(self.parent.model_combo)
         
         self.parent.refresh_models_btn = ModernButton(config_content, 
                                                      text=self.parent.get_ui_text("refresh_models"),
@@ -208,6 +257,8 @@ class GUIManager:
         
         self._create_comparison_section(main_frame)
         
+        self._create_log_section(main_frame)
+        
 
     
     def _create_comparison_section(self, parent: ModernFrame) -> None:
@@ -230,6 +281,7 @@ class GUIManager:
         self.parent.mod_combo.pack(side=tk.LEFT, padx=(0, 15))
         self.parent.mod_combo.bind('<<ComboboxSelected>>', self.parent.on_mod_change)
         self.parent.mod_combo.bind('<MouseWheel>', self.on_combobox_mousewheel)
+        self.comboboxes.append(self.parent.mod_combo)
         
         self.parent.refresh_mods_btn = ModernButton(mod_row1, 
                                                    text=self.parent.get_ui_text("refresh_mod_list"),
@@ -255,6 +307,7 @@ class GUIManager:
         self.parent.file_combo.pack(side=tk.LEFT, padx=(0, 15))
         self.parent.file_combo.bind('<<ComboboxSelected>>', self.parent.on_file_change)
         self.parent.file_combo.bind('<MouseWheel>', self.on_combobox_mousewheel)
+        self.comboboxes.append(self.parent.file_combo)
         
         container_frame = ModernFrame(self.parent.compare_frame.get_content_frame(), style="container")
         container_frame.pack(fill=tk.BOTH, expand=True)
@@ -352,6 +405,49 @@ class GUIManager:
             self.parent.style_manager.update_widget_styles(self.parent)
         
         self.parent._show_window_centered()
+    
+    def _create_log_section(self, parent: ModernFrame) -> None:
+        self.parent.log_frame = tk.Frame(parent, bg=parent.cget('bg'))
+        self.parent.log_frame.pack(fill=tk.BOTH, expand=False, pady=(0, 8))
+        
+        from .modern_widgets import style_manager
+        self.parent.log_text = tk.Text(
+            self.parent.log_frame,
+            height=3,
+            wrap=tk.WORD,
+            bg=style_manager.get_color('listbox_bg'),
+            fg=style_manager.get_color('listbox_fg'),
+            font=style_manager.get_font('default'),
+            relief="flat",
+            bd=1,
+            highlightthickness=1,
+            highlightcolor=style_manager.get_color('listbox_highlight_color'),
+            highlightbackground=style_manager.get_color('listbox_highlight_bg'),
+            state=tk.DISABLED
+        )
+        self.parent.log_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        
+        self.parent.log_scrollbar = ttk.Scrollbar(self.parent.log_frame, orient=tk.VERTICAL)
+        self.parent.log_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        self.parent.log_text.config(yscrollcommand=self.parent.log_scrollbar.set)
+        self.parent.log_scrollbar.config(command=self.parent.log_text.yview)
+        
+        self.parent.log_text.bind('<MouseWheel>', self.on_log_mouse_wheel)
+    
+    def on_log_mouse_wheel(self, event):
+        if event.delta:
+            delta = -1 * (event.delta / 120)
+        else:
+            if event.num == 4:
+                delta = -1
+            elif event.num == 5:
+                delta = 1
+            else:
+                return "break"
+        
+        self.parent.log_text.yview_scroll(int(delta), "units")
+        return "break"
     
     def update_ui_texts(self) -> None:
         self.root.title(self.parent.get_ui_text("title"))

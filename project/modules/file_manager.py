@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import shutil
 import zipfile
@@ -13,7 +14,10 @@ class FileManager:
     def __init__(self, app_instance):
         self.app = app_instance
         
-        self.work_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        if getattr(sys, 'frozen', False):
+            self.work_dir = Path(os.path.dirname(sys.executable))
+        else:
+            self.work_dir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         self.data_dir = self.work_dir / "Data"
         self.import_dir = self.data_dir / "1Import"
         self.extract_dir = self.data_dir / "2Extract"
@@ -436,9 +440,14 @@ class FileManager:
                             
                             self.app.log_message(self.app.get_ui_text("extract_i18n_file").format(rel_path / source_json.name, target_translation.name))
                 
-                self.app.log_message(self.app.get_ui_text("i18n_extract_completed"))
-                
                 self.app.refresh_mod_list()
+                
+                def delayed_completion_message():
+                    import time
+                    time.sleep(2)
+                    self.app.root.after(0, self.app.log_message, self.app.get_ui_text("i18n_extract_completed"))
+                
+                threading.Thread(target=delayed_completion_message, daemon=True).start()
                 
             except Exception as e:
                 self.app.log_message(self.app.get_ui_text("i18n_extract_failed").format(str(e)), "ERROR")
