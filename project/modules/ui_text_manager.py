@@ -78,6 +78,7 @@ class UITextManager:
                 "select_mod": "选择MOD:",
                 "refresh_mod_list": "刷新MOD列表",
                 "save_translation": "保存翻译",
+                "clear_directories": "清空目录",
                 "select_file": "选择文件:",
                 "original_text": "原文",
                 "translation_text": "翻译(可双击文本手动编辑)",
@@ -147,7 +148,16 @@ class UITextManager:
                 "invalid_number_input": "请输入有效的数字",
                 "show_settings_dialog_failed": "显示设置对话框失败",
                 "stopping_translation": "正在停止翻译...",
-                "translation_stopped": "翻译已停止"
+                "translation_stopped": "翻译已停止",
+                "clear_directories_dialog": "清空目录确认",
+                "clear_directories_message": "是否清空以下目录内的所有文件？\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\n此操作不可撤销！",
+                "clear": "清空",
+                "clear_directories_success": "目录清空完成",
+                "clear_directories_failed": "清空目录失败: {}",
+                "clear_directory_success": "已清空目录: {}",
+                "directory_not_exist": "目录不存在: {}",
+                "clear_directories_error": "清空目录时发生错误: {}",
+                "show_clear_dialog_failed": "显示清空对话框失败: {}"
             },
             "English": {
                 "title": "Stardew Valley MOD i18n AI Translation Tool",
@@ -218,6 +228,7 @@ class UITextManager:
                 "select_mod": "Select MOD:",
                 "refresh_mod_list": "Refresh MOD List",
                 "save_translation": "Save Translation",
+                "clear_directories": "Clear Directories",
                 "select_file": "Select File:",
                 "original": "Original",
                 "translated": "Translated",
@@ -281,6 +292,15 @@ class UITextManager:
                 "compressed_files_type": "Compressed Files",
                 "all_files_type": "All Files",
                 "translation_dir_not_exist": "Translation directory does not exist, cannot compress",
+                "clear_directories_dialog": "Clear Directories Confirmation",
+                "clear_directories_message": "Are you sure you want to clear all files in the following directories?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nThis operation cannot be undone!",
+                "clear": "Clear",
+                "clear_directories_success": "Directories cleared successfully",
+                "clear_directories_failed": "Failed to clear directories: {}",
+                "clear_directory_success": "Directory cleared: {}",
+                "directory_not_exist": "Directory does not exist: {}",
+                "clear_directories_error": "Error occurred while clearing directories: {}",
+                "show_clear_dialog_failed": "Failed to show clear dialog: {}"
             },
             "日本語": {
                 "title": "スターデューバレー MOD i18n AI翻訳ツール",
@@ -408,7 +428,16 @@ class UITextManager:
                 "select_mod_files_title": "MODファイルを選択",
                 "compressed_files_type": "圧縮ファイル",
                 "all_files_type": "すべてのファイル",
-                "translation_dir_not_exist": "Translationディレクトリが存在しません、圧縮できません"
+                "translation_dir_not_exist": "Translationディレクトリが存在しません、圧縮できません",
+                "clear_directories_dialog": "ディレクトリクリア確認",
+                "clear_directories_message": "以下のディレクトリ内のすべてのファイルをクリアしますか？\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nこの操作は元に戻せません！",
+                "clear": "クリア",
+                "clear_directories_success": "ディレクトリクリア完了",
+                "clear_directories_failed": "ディレクトリクリア失敗: {}",
+                "clear_directory_success": "ディレクトリをクリアしました: {}",
+                "directory_not_exist": "ディレクトリが存在しません: {}",
+                "clear_directories_error": "ディレクトリクリア中にエラーが発生しました: {}",
+                "show_clear_dialog_failed": "クリアダイアログの表示に失敗しました: {}"
             },
             "한국어": {
                 "title": "스타듀 밸리 MOD i18n AI번역 도구",
@@ -536,7 +565,16 @@ class UITextManager:
                 "select_mod_files_title": "MOD 파일 선택",
                 "compressed_files_type": "압축 파일",
                 "all_files_type": "모든 파일",
-                "translation_dir_not_exist": "Translation 디렉토리가 존재하지 않아 압축할 수 없습니다"
+                "translation_dir_not_exist": "Translation 디렉토리가 존재하지 않아 압축할 수 없습니다",
+                "clear_directories_dialog": "디렉토리 지우기 확인",
+                "clear_directories_message": "다음 디렉토리의 모든 파일을 지우시겠습니까?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\n이 작업은 되돌릴 수 없습니다!",
+                "clear": "지우기",
+                "clear_directories_success": "디렉토리 지우기 완료",
+                "clear_directories_failed": "디렉토리 지우기 실패: {}",
+                "clear_directory_success": "디렉토리를 지웠습니다: {}",
+                "directory_not_exist": "디렉토리가 존재하지 않습니다: {}",
+                "clear_directories_error": "디렉토리 지우기 중 오류가 발생했습니다: {}",
+                "show_clear_dialog_failed": "지우기 대화상자 표시 실패: {}"
             },
             "Français": {
                 "title": "Outil de Traduction MOD i18n AI Stardew Valley",
@@ -669,7 +707,16 @@ class UITextManager:
                 "select_mod_files_title": "Sélectionner les fichiers MOD",
                 "compressed_files_type": "Fichiers compressés",
                 "all_files_type": "Tous les fichiers",
-                "translation_dir_not_exist": "Le répertoire Translation n'existe pas, impossible de compresser"
+                "translation_dir_not_exist": "Le répertoire Translation n'existe pas, impossible de compresser",
+                "clear_directories_dialog": "Confirmation de vidage des répertoires",
+                "clear_directories_message": "Êtes-vous sûr de vouloir vider tous les fichiers des répertoires suivants ?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nCette opération ne peut pas être annulée !",
+                "clear": "Vider",
+                "clear_directories_success": "Répertoires vidés avec succès",
+                "clear_directories_failed": "Échec du vidage des répertoires : {}",
+                "clear_directory_success": "Répertoire vidé : {}",
+                "directory_not_exist": "Le répertoire n'existe pas : {}",
+                "clear_directories_error": "Erreur lors du vidage des répertoires : {}",
+                "show_clear_dialog_failed": "Échec de l'affichage de la boîte de dialogue de vidage : {}"
             },
             "Deutsch": {
                 "title": "Stardew Valley MOD i18n AI Übersetzungstool",
@@ -802,7 +849,16 @@ class UITextManager:
                 "extract_i18n_file": "i18n-Datei extrahieren: {} -> {}",
                 "loaded_original_file": "Originaldatei zum Vergleich geladen: {}",
                 "auto_saved_translations": "Automatisch {} Übersetzungen gespeichert",
-                "translation_dir_not_exist": "Translation-Verzeichnis existiert nicht, kann nicht komprimieren"
+                "translation_dir_not_exist": "Translation-Verzeichnis existiert nicht, kann nicht komprimieren",
+                "clear_directories_dialog": "Verzeichnisse leeren bestätigen",
+                "clear_directories_message": "Sind Sie sicher, dass Sie alle Dateien in den folgenden Verzeichnissen löschen möchten?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nDieser Vorgang kann nicht rückgängig gemacht werden!",
+                "clear": "Leeren",
+                "clear_directories_success": "Verzeichnisse erfolgreich geleert",
+                "clear_directories_failed": "Fehler beim Leeren der Verzeichnisse: {}",
+                "clear_directory_success": "Verzeichnis geleert: {}",
+                "directory_not_exist": "Verzeichnis existiert nicht: {}",
+                "clear_directories_error": "Fehler beim Leeren der Verzeichnisse: {}",
+                "show_clear_dialog_failed": "Fehler beim Anzeigen des Lösch-Dialogs: {}"
             },
             "Español": {
                 "title": "Herramienta de Traducción MOD i18n AI Stardew Valley",
@@ -935,7 +991,16 @@ class UITextManager:
                 "extract_i18n_file": "Extrayendo archivo i18n: {} -> {}",
                 "loaded_original_file": "Archivo original cargado para comparación: {}",
                 "auto_saved_translations": "Guardado automático de {} traducciones",
-                "translation_dir_not_exist": "El directorio Translation no existe, no se puede comprimir"
+                "translation_dir_not_exist": "El directorio Translation no existe, no se puede comprimir",
+                "clear_directories_dialog": "Confirmar vaciado de directorios",
+                "clear_directories_message": "¿Está seguro de que desea vaciar todos los archivos de los siguientes directorios?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\n¡Esta operación no se puede deshacer!",
+                "clear": "Vaciar",
+                "clear_directories_success": "Directorios vaciados exitosamente",
+                "clear_directories_failed": "Error al vaciar directorios: {}",
+                "clear_directory_success": "Directorio vaciado: {}",
+                "directory_not_exist": "El directorio no existe: {}",
+                "clear_directories_error": "Error al vaciar directorios: {}",
+                "show_clear_dialog_failed": "Error al mostrar el diálogo de vaciado: {}"
             },
             "Русский": {
                 "title": "Инструмент Перевода MOD i18n AI Stardew Valley",
@@ -1068,7 +1133,16 @@ class UITextManager:
                 "extract_i18n_file": "Извлечение файла i18n: {} -> {}",
                 "loaded_original_file": "Оригинальный файл загружен для сравнения: {}",
                 "auto_saved_translations": "Автоматически сохранено {} переводов",
-                "translation_dir_not_exist": "Каталог Translation не существует, сжатие невозможно"
+                "translation_dir_not_exist": "Каталог Translation не существует, сжатие невозможно",
+                "clear_directories_dialog": "Подтверждение очистки каталогов",
+                "clear_directories_message": "Вы уверены, что хотите очистить все файлы в следующих каталогах?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nЭта операция необратима!",
+                "clear": "Очистить",
+                "clear_directories_success": "Каталоги успешно очищены",
+                "clear_directories_failed": "Ошибка очистки каталогов: {}",
+                "clear_directory_success": "Каталог очищен: {}",
+                "directory_not_exist": "Каталог не существует: {}",
+                "clear_directories_error": "Ошибка при очистке каталогов: {}",
+                "show_clear_dialog_failed": "Ошибка отображения диалога очистки: {}"
             },
             "Português (BR)": {
                 "title": "Ferramenta de Tradução MOD i18n AI Stardew Valley",
@@ -1201,7 +1275,16 @@ class UITextManager:
                 "extract_i18n_file": "Extraindo arquivo i18n: {} -> {}",
                 "loaded_original_file": "Arquivo original carregado para comparação: {}",
                 "auto_saved_translations": "Salvamento automático de {} traduções",
-                "translation_dir_not_exist": "Diretório Translation não existe, não é possível comprimir"
+                "translation_dir_not_exist": "Diretório Translation não existe, não é possível comprimir",
+                "clear_directories_dialog": "Confirmação de limpeza de diretórios",
+                "clear_directories_message": "Tem certeza de que deseja limpar todos os arquivos dos seguintes diretórios?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nEsta operação não pode ser desfeita!",
+                "clear": "Limpar",
+                "clear_directories_success": "Diretórios limpos com sucesso",
+                "clear_directories_failed": "Falha ao limpar diretórios: {}",
+                "clear_directory_success": "Diretório limpo: {}",
+                "directory_not_exist": "Diretório não existe: {}",
+                "clear_directories_error": "Erro ao limpar diretórios: {}",
+                "show_clear_dialog_failed": "Falha ao exibir diálogo de limpeza: {}"
             },
             "Italiano": {
                 "title": "Strumento di Traduzione MOD i18n AI Stardew Valley",
@@ -1334,7 +1417,16 @@ class UITextManager:
                 "extract_i18n_file": "Estrazione file i18n: {} -> {}",
                 "loaded_original_file": "File originale caricato per confronto: {}",
                 "auto_saved_translations": "Salvataggio automatico di {} traduzioni",
-                "translation_dir_not_exist": "La directory Translation non esiste, impossibile comprimere"
+                "translation_dir_not_exist": "La directory Translation non esiste, impossibile comprimere",
+                "clear_directories_dialog": "Conferma svuotamento directory",
+                "clear_directories_message": "Sei sicuro di voler svuotare tutti i file nelle seguenti directory?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nQuesta operazione non può essere annullata!",
+                "clear": "Svuota",
+                "clear_directories_success": "Directory svuotate con successo",
+                "clear_directories_failed": "Errore nello svuotamento delle directory: {}",
+                "clear_directory_success": "Directory svuotata: {}",
+                "directory_not_exist": "La directory non esiste: {}",
+                "clear_directories_error": "Errore durante lo svuotamento delle directory: {}",
+                "show_clear_dialog_failed": "Errore nella visualizzazione del dialogo di svuotamento: {}"
             },
             "Türkçe": {
                 "title": "Stardew Valley MOD i18n AI Çeviri Aracı",
@@ -1467,7 +1559,16 @@ class UITextManager:
                 "extract_i18n_file": "i18n dosyası çıkarılıyor: {} -> {}",
                 "loaded_original_file": "Karşılaştırma için orijinal dosya yüklendi: {}",
                 "auto_saved_translations": "Otomatik olarak {} çeviri kaydedildi",
-                "translation_dir_not_exist": "Translation dizini mevcut değil, sıkıştırılamıyor"
+                "translation_dir_not_exist": "Translation dizini mevcut değil, sıkıştırılamıyor",
+                "clear_directories_dialog": "Dizin temizleme onayı",
+                "clear_directories_message": "Aşağıdaki dizinlerdeki tüm dosyaları temizlemek istediğinizden emin misiniz?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nBu işlem geri alınamaz!",
+                "clear": "Temizle",
+                "clear_directories_success": "Dizinler başarıyla temizlendi",
+                "clear_directories_failed": "Dizin temizleme hatası: {}",
+                "clear_directory_success": "Dizin temizlendi: {}",
+                "directory_not_exist": "Dizin mevcut değil: {}",
+                "clear_directories_error": "Dizin temizleme sırasında hata: {}",
+                "show_clear_dialog_failed": "Temizleme diyalogu gösterme hatası: {}"
             },
             "Magyar": {
                 "title": "Stardew Valley MOD i18n AI Fordító Eszköz",
@@ -1619,7 +1720,16 @@ class UITextManager:
                 "extract_i18n_file": "i18n fájl kinyerése: {} -> {}",
                 "loaded_original_file": "Eredeti fájl betöltve összehasonlításhoz: {}",
                 "auto_saved_translations": "Automatikusan {} fordítás mentve",
-                "translation_dir_not_exist": "A Translation könyvtár nem létezik, nem lehet tömöríteni"
+                "translation_dir_not_exist": "A Translation könyvtár nem létezik, nem lehet tömöríteni",
+                "clear_directories_dialog": "Könyvtárak törlésének megerősítése",
+                "clear_directories_message": "Biztosan törölni szeretné az összes fájlt a következő könyvtárakból?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nEz a művelet nem vonható vissza!",
+                "clear": "Törlés",
+                "clear_directories_success": "Könyvtárak sikeresen törölve",
+                "clear_directories_failed": "Könyvtárak törlése sikertelen: {}",
+                "clear_directory_success": "Könyvtár törölve: {}",
+                "directory_not_exist": "A könyvtár nem létezik: {}",
+                "clear_directories_error": "Hiba a könyvtárak törlése során: {}",
+                "show_clear_dialog_failed": "Törlési párbeszédablak megjelenítése sikertelen: {}"
             },
         }
     def set_language(self, language: str) -> None:

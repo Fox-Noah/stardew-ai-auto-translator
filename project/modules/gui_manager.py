@@ -295,6 +295,12 @@ class GUIManager:
                                                        style="success")
         self.parent.save_translation_btn.pack(side=tk.LEFT)
         
+        self.parent.clear_dirs_btn = ModernButton(mod_row1, 
+                                                 text=self.parent.get_ui_text("clear_directories"), 
+                                                 command=self._on_clear_directories,
+                                                 style="danger")
+        self.parent.clear_dirs_btn.pack(side=tk.RIGHT)
+        
         mod_row2 = ModernFrame(mod_selection_frame, style="default")
         mod_row2.pack(fill=tk.X)
         
@@ -934,22 +940,27 @@ class GUIManager:
                                    command=save_settings, style="primary")
             save_btn.pack(side=tk.RIGHT, padx=5, pady=5)
             
-            settings_dialog.update_idletasks()
+            def show_dialog():
+                settings_dialog.update_idletasks()
+                
+                settings_dialog.geometry("")
+                settings_dialog.update_idletasks()
+                
+                min_width = 420
+                req_width = max(min_width, settings_dialog.winfo_reqwidth())
+                req_height = settings_dialog.winfo_reqheight()
+                
+                x = (settings_dialog.winfo_screenwidth() // 2) - (req_width // 2)
+                y = (settings_dialog.winfo_screenheight() // 2) - (req_height // 2)
+                settings_dialog.geometry(f"{req_width}x{req_height}+{x}+{y}")
+                
+                settings_dialog.deiconify()
+                settings_dialog.grab_set()
+                settings_dialog.lift()
+                settings_dialog.focus_force()
             
-            settings_dialog.geometry("")
-            settings_dialog.update_idletasks()
-            
-            min_width = 420
-            req_width = max(min_width, settings_dialog.winfo_reqwidth())
-            req_height = settings_dialog.winfo_reqheight()
-            
-            x = (settings_dialog.winfo_screenwidth() // 2) - (req_width // 2)
-            y = (settings_dialog.winfo_screenheight() // 2) - (req_height // 2)
-            settings_dialog.geometry(f"{req_width}x{req_height}+{x}+{y}")
-            
-            settings_dialog.grab_set()
-            settings_dialog.lift()
-            settings_dialog.focus_force()
+            settings_dialog.withdraw()
+            settings_dialog.after(50, show_dialog)
             
         except Exception as e:
             self.parent.log_message(f"{self.parent.get_ui_text('show_settings_dialog_failed')}: {str(e)}", "ERROR")
@@ -1131,3 +1142,94 @@ class GUIManager:
     def _on_translation_double_click(self, event) -> None:
         if 'on_translation_double_click' in self.callbacks:
             self.callbacks['on_translation_double_click'](event)
+    
+    def _on_clear_directories(self) -> None:
+        self.show_clear_directories_dialog()
+    
+    def show_clear_directories_dialog(self):
+        try:
+            clear_dialog = tk.Toplevel(self.root)
+            clear_dialog.title(self.parent.get_ui_text("clear_directories"))
+            clear_dialog.resizable(False, False)
+            clear_dialog.transient(self.root)
+            
+            from .modern_widgets import style_manager
+            clear_dialog.config(bg=style_manager.get_color('bg'))
+            
+            if getattr(sys, 'frozen', False):
+                try:
+                    clear_dialog.iconbitmap(default=sys.executable)
+                except Exception as e:
+                    print(f"设置对话框图标失败: {e}")
+            else:
+                icon_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "icon.ico")
+                if os.path.exists(icon_path):
+                    try:
+                        clear_dialog.iconbitmap(icon_path)
+                    except Exception as e:
+                        print(f"设置对话框图标失败: {e}")
+            
+            main_container = ModernFrame(clear_dialog, style="container", padding=8)
+            main_container.pack(fill=tk.BOTH, expand=True)
+            
+            warning_frame = ModernFrame(main_container, text="⚠️ 警告", 
+                                      style="card", padding=5)
+            warning_frame.pack(fill=tk.X, pady=(0, 8))
+            
+            warning_content = ModernFrame(warning_frame.get_content_frame(), style="default")
+            warning_content.pack(fill=tk.X, padx=5, pady=5)
+            
+            info_text = "此操作将清空以下目录中的所有文件：\n\n• Original 目录\n• Translated 目录\n• Backup 目录\n\n此操作不可撤销，请确认是否继续？"
+            info_label = ModernLabel(warning_content, text=info_text, 
+                                   justify=tk.LEFT, wraplength=350)
+            info_label.pack(anchor=tk.W)
+            
+            button_frame = ModernFrame(main_container, style="default", padding=5)
+            button_frame.pack(fill=tk.X, pady=(20, 0))
+            
+            def confirm_clear():
+                try:
+                    if hasattr(self.parent, 'file_manager') and hasattr(self.parent.file_manager, 'clear_data_directories'):
+                        self.parent.file_manager.clear_data_directories()
+                        self.parent.log_message("目录清空完成")
+                        clear_dialog.destroy()
+                    else:
+                        self.parent.log_message("清空目录功能不可用", "ERROR")
+                except Exception as e:
+                    self.parent.log_message(f"清空目录时出错: {str(e)}", "ERROR")
+            
+            def cancel_clear():
+                clear_dialog.destroy()
+            
+            cancel_btn = ModernButton(button_frame, text=self.parent.get_ui_text("cancel"), 
+                                     command=cancel_clear, style="secondary")
+            cancel_btn.pack(side=tk.RIGHT, padx=5, pady=5)
+            
+            confirm_btn = ModernButton(button_frame, text="确认清空", 
+                                     command=confirm_clear, style="danger")
+            confirm_btn.pack(side=tk.RIGHT, padx=5, pady=5)
+            
+            def show_dialog():
+                clear_dialog.update_idletasks()
+                
+                clear_dialog.geometry("")
+                clear_dialog.update_idletasks()
+                
+                min_width = 420
+                req_width = max(min_width, clear_dialog.winfo_reqwidth())
+                req_height = clear_dialog.winfo_reqheight()
+                
+                x = (clear_dialog.winfo_screenwidth() // 2) - (req_width // 2)
+                y = (clear_dialog.winfo_screenheight() // 2) - (req_height // 2)
+                clear_dialog.geometry(f"{req_width}x{req_height}+{x}+{y}")
+                
+                clear_dialog.deiconify()
+                clear_dialog.grab_set()
+                clear_dialog.lift()
+                clear_dialog.focus_force()
+            
+            clear_dialog.withdraw()
+            clear_dialog.after(50, show_dialog)
+            
+        except Exception as e:
+            self.parent.log_message(f"显示清空目录对话框失败: {str(e)}", "ERROR")

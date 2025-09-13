@@ -701,3 +701,28 @@ class FileManager:
                 self.app.log_message(self.app.get_ui_text("compress_error").format(str(e)), "ERROR")
         
         threading.Thread(target=compress, daemon=True).start()
+    
+    def clear_data_directories(self):
+        try:
+            directories_to_clear = [
+                self.import_dir,
+                self.extract_dir,
+                self.i18n_dir
+            ]
+            
+            for directory in directories_to_clear:
+                if directory.exists():
+                    for item in directory.iterdir():
+                        if item.is_file():
+                            item.unlink()
+                        elif item.is_dir():
+                            shutil.rmtree(item)
+                    
+                    self.app.log_message(self.app.get_ui_text("clear_directory_success").format(directory.name))
+                else:
+                    self.app.log_message(self.app.get_ui_text("directory_not_exist").format(directory.name), "WARNING")
+            
+            self.app.refresh_mod_list()
+            
+        except Exception as e:
+            raise Exception(self.app.get_ui_text("clear_directories_error").format(str(e)))
