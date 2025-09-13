@@ -295,14 +295,14 @@ class GUIManager:
                                                        style="success")
         self.parent.save_translation_btn.pack(side=tk.LEFT)
         
-        self.parent.clear_dirs_btn = ModernButton(mod_row1, 
+        mod_row2 = ModernFrame(mod_selection_frame, style="default")
+        mod_row2.pack(side=tk.LEFT, padx=(0, 8))
+        
+        self.parent.clear_dirs_btn = ModernButton(mod_row2, 
                                                  text=self.parent.get_ui_text("clear_directories"), 
                                                  command=self._on_clear_directories,
                                                  style="danger")
         self.parent.clear_dirs_btn.pack(side=tk.RIGHT)
-        
-        mod_row2 = ModernFrame(mod_selection_frame, style="default")
-        mod_row2.pack(fill=tk.X)
         
         self.parent.file_label = ModernLabel(mod_row2, 
                                             text=self.parent.get_ui_text("select_file"),
@@ -498,6 +498,8 @@ class GUIManager:
             self.parent.refresh_mods_btn.config(text=self.parent.get_ui_text("refresh_mod_list"))
         if hasattr(self.parent, 'save_translation_btn'):
             self.parent.save_translation_btn.config(text=self.parent.get_ui_text("save_translation"))
+        if hasattr(self.parent, 'clear_dirs_btn'):
+            self.parent.clear_dirs_btn.config(text=self.parent.get_ui_text("clear_directories"))
         if hasattr(self.parent, 'file_label'):
             self.parent.file_label.config(text=self.parent.get_ui_text("select_file"))
         
@@ -1172,14 +1174,14 @@ class GUIManager:
             main_container = ModernFrame(clear_dialog, style="container", padding=8)
             main_container.pack(fill=tk.BOTH, expand=True)
             
-            warning_frame = ModernFrame(main_container, text="⚠️ 警告", 
+            warning_frame = ModernFrame(main_container, text=f"⚠️ {self.parent.get_ui_text('warning')}", 
                                       style="card", padding=5)
             warning_frame.pack(fill=tk.X, pady=(0, 8))
             
             warning_content = ModernFrame(warning_frame.get_content_frame(), style="default")
             warning_content.pack(fill=tk.X, padx=5, pady=5)
             
-            info_text = "此操作将清空以下目录中的所有文件：\n\n• Original 目录\n• Translated 目录\n• Backup 目录\n\n此操作不可撤销，请确认是否继续？"
+            info_text = self.parent.get_ui_text("clear_directories_message")
             info_label = ModernLabel(warning_content, text=info_text, 
                                    justify=tk.LEFT, wraplength=350)
             info_label.pack(anchor=tk.W)
@@ -1191,12 +1193,12 @@ class GUIManager:
                 try:
                     if hasattr(self.parent, 'file_manager') and hasattr(self.parent.file_manager, 'clear_data_directories'):
                         self.parent.file_manager.clear_data_directories()
-                        self.parent.log_message("目录清空完成")
+                        self.parent.log_message(self.parent.get_ui_text("clear_directories_success"))
                         clear_dialog.destroy()
                     else:
-                        self.parent.log_message("清空目录功能不可用", "ERROR")
+                        self.parent.log_message(self.parent.get_ui_text("clear_directories_unavailable"), "ERROR")
                 except Exception as e:
-                    self.parent.log_message(f"清空目录时出错: {str(e)}", "ERROR")
+                    self.parent.log_message(self.parent.get_ui_text("clear_directories_error").format(str(e)), "ERROR")
             
             def cancel_clear():
                 clear_dialog.destroy()
@@ -1205,7 +1207,7 @@ class GUIManager:
                                      command=cancel_clear, style="secondary")
             cancel_btn.pack(side=tk.RIGHT, padx=5, pady=5)
             
-            confirm_btn = ModernButton(button_frame, text="确认清空", 
+            confirm_btn = ModernButton(button_frame, text=self.parent.get_ui_text("clear_directories_confirm"), 
                                      command=confirm_clear, style="danger")
             confirm_btn.pack(side=tk.RIGHT, padx=5, pady=5)
             
@@ -1232,4 +1234,4 @@ class GUIManager:
             clear_dialog.after(50, show_dialog)
             
         except Exception as e:
-            self.parent.log_message(f"显示清空目录对话框失败: {str(e)}", "ERROR")
+            self.parent.log_message(self.parent.get_ui_text("clear_directories_dialog_error").format(str(e)), "ERROR")

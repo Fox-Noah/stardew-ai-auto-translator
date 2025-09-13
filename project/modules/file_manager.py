@@ -154,12 +154,14 @@ class FileManager:
             selected_file = self.app.gui_manager.parent.file_combo.get()
             
             if not selected_mod or not selected_file:
+                self.app.root.after(0, self._clear_comparison_display)
                 return
             
             translation_file_path = self.i18n_dir / "Translation" / selected_mod / selected_file
             original_file_path = self.find_matching_original_file(translation_file_path, selected_mod)
             
             if not translation_file_path.exists():
+                self.app.root.after(0, self._clear_comparison_display)
                 return
             
             translation_data = self.load_json_with_comments(translation_file_path)
@@ -173,6 +175,7 @@ class FileManager:
             self.app.root.after(0, self.app.translation_manager.display_comparison_data, translation_data, original_data)
             
         except Exception as e:
+            self.app.root.after(0, self._clear_comparison_display)
             self.app.root.after(0, self.app.log_message, f"刷新对比数据失败: {str(e)}", "ERROR")
     
     def refresh_comparison_data(self):
@@ -219,6 +222,12 @@ class FileManager:
                 threading.Thread(target=self._load_mod_data_async, daemon=True).start()
             else:
                 self.app.gui_manager.parent.mod_combo.set('')
+                self.app.gui_manager.parent.file_combo.set('')
+                self.app.gui_manager.parent.file_combo['values'] = []
+                if hasattr(self.app, 'original_listbox'):
+                    self.app.original_listbox.delete(0, 'end')
+                if hasattr(self.app, 'translation_listbox'):
+                    self.app.translation_listbox.delete(0, 'end')
                 self.app.log_message(self.app.ui_text_manager.get_text("no_mods_found"))
                 
         except Exception as e:
@@ -228,6 +237,7 @@ class FileManager:
         try:
             selected_mod_name = self.app.gui_manager.parent.mod_combo.get()
             if not selected_mod_name:
+                self.app.root.after(0, self._clear_file_ui)
                 return
                 
             selected_mod = None
@@ -242,7 +252,10 @@ class FileManager:
                 
                 self._load_file_list_async()
                 self._load_comparison_data_async()
+            else:
+                self.app.root.after(0, self._clear_file_ui)
         except Exception as e:
+            self.app.root.after(0, self._clear_file_ui)
             self.app.root.after(0, self.app.log_message, f"MOD数据加载失败: {str(e)}", "ERROR")
     
     def on_mod_change(self, event=None):
@@ -266,8 +279,10 @@ class FileManager:
                         
                         self.app.root.after(0, self._update_file_list_ui, available_files)
                     else:
+                        self.app.root.after(0, self._clear_file_ui)
                         self.app.root.after(0, self.app.log_message, self.app.get_ui_text("no_localization_files_found"))
                 else:
+                    self.app.root.after(0, self._clear_file_ui)
                     self.app.root.after(0, self.app.log_message, self.app.get_ui_text("mod_translation_dir_not_exist"))
         except Exception as e:
             self.app.root.after(0, self.app.log_message, self.app.get_ui_text("refresh_file_list_failed").format(str(e)), "ERROR")
@@ -282,8 +297,12 @@ class FileManager:
             if file_names:
                 self.app.gui_manager.parent.file_combo.set(file_names[0])
                 self.app.current_file_index = 0
-                
-            self.app.log_message(self.app.get_ui_text("found_localization_files").format(len(file_names)))
+                self.app.log_message(self.app.get_ui_text("found_localization_files").format(len(file_names)))
+            else:
+                if hasattr(self.app, 'original_listbox'):
+                    self.app.original_listbox.delete(0, 'end')
+                if hasattr(self.app, 'translation_listbox'):
+                    self.app.translation_listbox.delete(0, 'end')
         except Exception as e:
             self.app.log_message(self.app.get_ui_text("refresh_file_list_failed").format(str(e)), "ERROR")
     
@@ -294,6 +313,10 @@ class FileManager:
         try:
             selected_file = self.app.gui_manager.parent.file_combo.get()
             if not selected_file:
+                if hasattr(self.app, 'original_listbox'):
+                    self.app.original_listbox.delete(0, 'end')
+                if hasattr(self.app, 'translation_listbox'):
+                    self.app.translation_listbox.delete(0, 'end')
                 return
                 
             self.app.log_message(f"切换到文件: {selected_file}")
@@ -722,7 +745,66 @@ class FileManager:
                 else:
                     self.app.log_message(self.app.get_ui_text("directory_not_exist").format(directory.name), "WARNING")
             
+            self._reset_ui_components()
             self.app.refresh_mod_list()
             
         except Exception as e:
             raise Exception(self.app.get_ui_text("clear_directories_error").format(str(e)))
+    
+    def _reset_ui_components(self):
+        try:
+            self.app.gui_manager.parent.mod_combo.set("")
+            self.app.gui_manager.parent.mod_combo['values'] = []
+            
+            self.app.gui_manager.parent.file_combo.set("")
+            self.app.gui_manager.parent.file_combo['values'] = []
+            
+            if hasattr(self.app, 'original_listbox'):
+                self.app.original_listbox.delete(0, 'end')
+            if hasattr(self.app, 'translation_listbox'):
+                self.app.translation_listbox.delete(0, 'end')
+            
+            self.app.current_original_data = {}
+            self.app.current_translation_data = {}
+            self.app.current_translation_keys = []
+            self.app.current_mod_path = None
+            self.app.current_translation_file = None
+            
+            self.app.available_mods = []
+            self.app.available_files = []
+            
+        except Exception as e:
+            self.app.log_message(f"重置界面组件失败: {str(e)}", "ERROR")
+    
+    def _clear_file_ui(self):
+        try:
+            self.app.gui_manager.parent.file_combo.set("")
+            self.app.gui_manager.parent.file_combo['values'] = []
+            
+            if hasattr(self.app, 'original_listbox'):
+                self.app.original_listbox.delete(0, 'end')
+            if hasattr(self.app, 'translation_listbox'):
+                self.app.translation_listbox.delete(0, 'end')
+            
+            self.app.current_original_data = {}
+            self.app.current_translation_data = {}
+            self.app.current_translation_keys = []
+            self.app.current_translation_file = None
+            self.app.available_files = []
+            
+        except Exception as e:
+            self.app.log_message(f"清空文件界面失败: {str(e)}", "ERROR")
+    
+    def _clear_comparison_display(self):
+        try:
+            if hasattr(self.app, 'original_listbox'):
+                self.app.original_listbox.delete(0, 'end')
+            if hasattr(self.app, 'translation_listbox'):
+                self.app.translation_listbox.delete(0, 'end')
+            
+            self.app.current_original_data = {}
+            self.app.current_translation_data = {}
+            self.app.current_translation_keys = []
+            
+        except Exception as e:
+            self.app.log_message(f"清空对比显示失败: {str(e)}", "ERROR")
