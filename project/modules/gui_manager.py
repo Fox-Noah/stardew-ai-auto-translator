@@ -410,6 +410,16 @@ class GUIManager:
             self.parent.style_manager.apply_theme_to_root(self.parent.root)
             self.parent.style_manager.update_widget_styles(self.parent)
         
+        self.parent.version_label = tk.Label(
+            self.root,
+            text="v1.0",
+            font=("Microsoft YaHei UI", 8),
+            fg="#666666",
+            relief="flat",
+            borderwidth=0
+        )
+        self.parent.version_label.place(relx=1.0, rely=1.0, anchor="se", x=-10, y=-0)
+        
         self.parent._show_window_centered()
     
     def _create_log_section(self, parent: ModernFrame) -> None:
