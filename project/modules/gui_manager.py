@@ -407,7 +407,7 @@ class GUIManager:
         self.parent._show_window_centered()
     
     def _create_log_section(self, parent: ModernFrame) -> None:
-        self.parent.log_frame = tk.Frame(parent, bg=parent.cget('bg'))
+        self.parent.log_frame = tk.LabelFrame(parent, text="日志", bg=parent.cget('bg'))
         self.parent.log_frame.pack(fill=tk.BOTH, expand=False, pady=(0, 8))
         
         from .modern_widgets import style_manager

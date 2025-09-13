@@ -162,8 +162,6 @@ class TranslationManager:
                         
                         self.main_app.file_manager.save_json_with_original_format(translated_data, json_file, json_file)
                         self.main_app.log_message(f"已保存翻译文件: {json_file.name}")
-                        if hasattr(self.main_app, 'update_translation_display'):
-                            self.main_app.update_translation_display()
                         
                     except Exception as e:
                         self.main_app.log_message(self.main_app.get_ui_text("translate_file_failed").format(json_file.name, str(e)), "ERROR")
@@ -213,7 +211,7 @@ class TranslationManager:
                 next_file = self.main_app.available_files[next_index]
                 self.main_app.log_message(f"自动切换到下一个文件: {next_file['name']}")
                 
-                self.main_app.load_comparison_files()
+                self.main_app.on_file_change()
                 
                 def delayed_auto_translate():
                     if not self.is_translating:
