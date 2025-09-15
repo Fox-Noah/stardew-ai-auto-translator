@@ -196,7 +196,7 @@ class OllamaTranslator:
                         ("Alex helped Haley take photos while Leah carved sculptures and Elliott wrote poems, as Caroline and Jodi prepared dinner with Evelyn and George.", "Алекс помогал Хейли фотографировать, пока Лия вырезала скульптуры, а Эллиот писал стихи, когда Кэролайн и Джоди готовили ужин с Эвелин и Джорджем.")
                     ]
                 },
-                'pt-BR': {
+                'pt': {
                     'name': 'Português (BR)',
                     'examples': [
                         ("Level {{level}} shield found!", "Escudo nível {{level}} encontrado!"),
