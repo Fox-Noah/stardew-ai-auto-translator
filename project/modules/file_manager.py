@@ -69,10 +69,27 @@ class FileManager:
             
             cleaned_content = '\n'.join(cleaned_lines)
             
-            return json.loads(cleaned_content)
+            try:
+                return json.loads(cleaned_content)
+            except json.JSONDecodeError as e:
+                fixed_content = self._fix_json_syntax_errors(cleaned_content)
+                
+                try:
+                    result = json.loads(fixed_content)
+                    self.app.log_message(f"JSON解析成功: {file_path}")
+                    return result
+                    
+                except json.JSONDecodeError as e2:
+                    error_details = self._get_detailed_json_error(file_path, cleaned_content, e2)
+                    self.app.log_message(f"JSON解析失败: {file_path}")
+                    
+                    raise Exception(f"解析JSON文件失败 {file_path}: {str(e2)}")
             
         except Exception as e:
-            raise Exception(f"解析JSON文件失败 {file_path}: {str(e)}")
+            if "解析JSON文件失败" not in str(e):
+                raise Exception(f"读取JSON文件失败 {file_path}: {str(e)}")
+            else:
+                raise e
     
     def save_json_with_original_format(self, data, original_file_path, target_file_path):
         try:
@@ -512,50 +529,6 @@ class FileManager:
         
         return None
     
-    def load_json_with_comments(self, file_path):
-        try:
-            with open(file_path, 'r', encoding='utf-8-sig') as f:
-                content = f.read()
-            
-            lines = content.split('\n')
-            cleaned_lines = []
-            
-            for line in lines:
-                if '//' in line:
-                    in_string = False
-                    escaped = False
-                    comment_pos = -1
-                    
-                    for i, char in enumerate(line):
-                        if escaped:
-                            escaped = False
-                            continue
-                        if char == '\\' and in_string:
-                            escaped = True
-                            continue
-                        if char == '"':
-                            in_string = not in_string
-                        elif char == '/' and i + 1 < len(line) and line[i + 1] == '/' and not in_string:
-                            comment_pos = i
-                            break
-                    
-                    if comment_pos >= 0:
-                        line = line[:comment_pos].rstrip()
-                
-                line = line.strip()
-                if line.startswith('/*') or line.startswith('*') or line.endswith('*/'):
-                    continue
-                
-                if line:
-                    cleaned_lines.append(line)
-            
-            cleaned_content = '\n'.join(cleaned_lines)
-            
-            return json.loads(cleaned_content)
-            
-        except Exception as e:
-            raise Exception(f"解析JSON文件失败 {file_path}: {str(e)}")
-    
     def save_json_with_original_format(self, data, original_file_path, target_file_path):
         try:
             with open(original_file_path, 'r', encoding='utf-8-sig') as f:
@@ -628,7 +601,7 @@ class FileManager:
                 
         except Exception as e:
             with open(target_file_path, 'w', encoding='utf-8') as f:
-                json.dump(data, f, ensure_ascii=False, indent=4)
+                 json.dump(data, f, ensure_ascii=False, indent=4)
     
     def save_translation_data(self, mod_name, file_name, data):
         try:
@@ -818,3 +791,54 @@ class FileManager:
             
         except Exception as e:
             self.app.log_message(f"清空对比显示失败: {str(e)}", "ERROR")
+    
+    def _fix_json_syntax_errors(self, content):
+        content = re.sub(r',(\s*[}\]])', r'\1', content)
+        
+        content = re.sub(r'"\s*\n\s*"', '",\n\t"', content)
+        
+        content = re.sub(r"'([^']*)':", r'"\1":', content)
+        
+        content = re.sub(r'([{,]\s*)([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', content)
+        
+        content = re.sub(r'\n\s*\n', '\n', content)
+        
+        content = content.strip()
+        if not content.startswith('{') and not content.startswith('['):
+            content = '{' + content
+        if not content.endswith('}') and not content.endswith(']'):
+            if content.startswith('{'):
+                content = content + '}'
+            elif content.startswith('['):
+                content = content + ']'
+        
+        return content
+    
+    def _get_detailed_json_error(self, file_path, content, error):
+        lines = content.split('\n')
+        error_line = error.lineno - 1 if error.lineno > 0 else 0
+        
+        start_line = max(0, error_line - 2)
+        end_line = min(len(lines), error_line + 3)
+        
+        context_lines = []
+        for i in range(start_line, end_line):
+            if i < len(lines):
+                marker = " -> " if i == error_line else "    "
+                context_lines.append(f"{marker}第{i+1}行: {lines[i]}")
+        
+        error_msg = f"""
+JSON解析错误详情:
+文件: {file_path}
+错误: {error.msg}
+位置: 第{error.lineno}行，第{error.colno}列
+
+错误上下文:
+{chr(10).join(context_lines)}
+
+建议检查:
+1. 是否有多余的逗号（特别是最后一个属性后）
+2. 是否缺少引号
+3. 是否有未转义的特殊字符
+4. 是否有未闭合的括号或大括号
+        保存修复后的JSON文件

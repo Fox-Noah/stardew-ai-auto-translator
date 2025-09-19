@@ -412,7 +412,7 @@ class GUIManager:
         
         self.parent.version_label = tk.Label(
             self.root,
-            text="v1.1",
+            text="v1.2",
             font=("Microsoft YaHei UI", 8),
             fg="#666666",
             relief="flat",
