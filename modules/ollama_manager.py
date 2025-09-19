@@ -1,3 +1,9 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Ollama管理模块
+负责与Ollama服务的交互和翻译功能
+"""
 
 import requests
 import concurrent.futures
@@ -6,14 +12,16 @@ from typing import List, Dict, Optional, Callable
 
 
 class OllamaManager:
+    """Ollama服务管理器"""
     
     def __init__(self, main_app=None, base_url: str = 'http://localhost:11434', model: str = None):
         self.base_url = base_url
         self.model = model
         self.translator = OllamaTranslator(base_url=base_url, model=model, main_app=main_app)
-        self.main_app = main_app
+        self.main_app = main_app  # 主应用引用
     
     def check_server_status(self) -> bool:
+        """检查Ollama服务器状态"""
         try:
             response = requests.get(f"{self.base_url}/api/tags", timeout=0.5)
             return response.status_code == 200
@@ -21,6 +29,7 @@ class OllamaManager:
             return False
     
     def get_available_models(self) -> List[str]:
+        """获取可用模型列表"""
         try:
             response = requests.get(f"{self.base_url}/api/tags", timeout=0.5)
             if response.status_code == 200:
@@ -31,29 +40,37 @@ class OllamaManager:
             return []
     
     def set_model(self, model: str):
+        """设置当前使用的模型"""
         self.model = model
         self.translator.model = model
     
     def translate_single_text(self, text: str, target_lang: str) -> str:
+        """翻译单个文本"""
         return self.translator.translate_single_text(text, target_lang)
     
     def translate_batch_async(self, texts: List[str], target_lang: str, batch_size: int = 5,
                             progress_callback: Optional[Callable] = None,
                             stop_check: Optional[Callable] = None,
                             result_callback: Optional[Callable] = None) -> List[str]:
+        """异步批量翻译"""
         return self.translator.translate_batch_async(
             texts, target_lang, batch_size, progress_callback, stop_check, result_callback
         )
     
     def refresh_models(self):
+        """刷新模型列表"""
         def refresh():
             try:
                 if self.main_app:
                     self.main_app.log_message("正在刷新模型列表...")
+                # 检查Ollama状态
                 if self.check_server_status():
+                    # 获取模型列表
                     models = self.get_available_models()
                     if self.main_app:
+                        # 更新available_models属性
                         self.main_app.available_models = models
+                        # 通过主线程更新UI
                         self.main_app.root.after(0, lambda: self.main_app._update_models_ui(models))
                         if models:
                             self.model = models[0]
@@ -71,10 +88,12 @@ class OllamaManager:
                 else:
                     print(f"刷新模型列表失败: {str(e)}")
         
+        # 在线程中执行刷新
         threading.Thread(target=refresh, daemon=True).start()
 
 
 class OllamaTranslator:
+    """Ollama翻译器实现"""
     
     def __init__(self, base_url: str = 'http://localhost:11434', model: str = None, main_app=None):
         self.model = model
@@ -82,7 +101,9 @@ class OllamaTranslator:
         self.main_app = main_app
     
     def translate_single_text(self, text: str, target_lang: str) -> str:
+        """翻译单个文本"""
         try:
+            # 语言配置映射
             lang_config = {
                 'zh': {
                     'name': '中文',
@@ -254,10 +275,12 @@ class OllamaTranslator:
                 }
             }
             
+            # 获取目标语言配置，默认为中文
             current_lang = lang_config.get(target_lang, lang_config['zh'])
             target_lang_name = current_lang['name']
             fake_examples = current_lang['examples']
             
+            # 动态生成用户提示词
             user_prompt = f"你怎么还是把变量名内容翻译了? 请重新理解并将以下星露谷物语代码文本翻译成{target_lang_name}，不允许翻译任何花括号内的变量名避免编译错误, 人名和名词等都必须完全翻译,要求符合官方本地化名称, 只返回翻译结果，不需要解释："
             
             fake_history = []
@@ -267,11 +290,13 @@ class OllamaTranslator:
                     {"role": "assistant", "content": translation}
                 ])
             
+            # 添加当前翻译请求
             fake_history.append({
                 "role": "user",
                 "content": f"{user_prompt} {text}"
             })
             
+            # 发送带有历史记录的翻译请求
             base_url = self.base_url
             if self.main_app and hasattr(self.main_app, 'ollama_base_url'):
                 base_url = self.main_app.ollama_base_url
@@ -304,24 +329,29 @@ class OllamaTranslator:
                             progress_callback: Optional[Callable] = None,
                             stop_check: Optional[Callable] = None,
                             result_callback: Optional[Callable] = None) -> List[str]:
+        """异步批量翻译（真正的批量翻译实现）"""
         results = [None] * len(texts)
         total = len(texts)
         completed = 0
         lock = threading.Lock()
         
-        max_workers = min(batch_size, len(texts))
+        # 使用真正的异步处理，不等待整批完成
+        max_workers = min(batch_size, len(texts))  # 根据批量大小设置并发数
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+            # 直接提交单个翻译任务，而不是批次
             future_to_index = {
                 executor.submit(self.translate_single_text, text, target_lang): i
                 for i, text in enumerate(texts)
             }
             
+            # 异步收集结果，不等待所有任务完成
             for future in concurrent.futures.as_completed(future_to_index):
                 try:
                     index = future_to_index[future]
                     translated_text = future.result()
                     results[index] = translated_text if translated_text else texts[index]
                     
+                    # 立即更新进度和回调
                     with lock:
                         completed += 1
                         if progress_callback:
@@ -332,18 +362,20 @@ class OllamaTranslator:
                             
                 except Exception as e:
                     index = future_to_index[future]
-                    results[index] = texts[index]
+                    results[index] = texts[index]  # 失败时保留原文
                     with lock:
                         completed += 1
                         if progress_callback:
                             progress_callback(completed, total, f"已完成 {completed}/{total} 条翻译（第{index+1}条失败）")
                 
                 if stop_check and stop_check():
+                    # 取消所有未完成的任务
                     for f in future_to_index:
                         if not f.done():
                             f.cancel()
                     break
         
+        # 对于未处理的条目，保留原文
         for i, result in enumerate(results):
             if result is None:
                 results[i] = texts[i]

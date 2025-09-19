@@ -1,14 +1,23 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+UI文本管理模块
+负责多语言界面文本的管理和获取
+"""
 
 from typing import Dict, Any
 
 
 class UITextManager:
+    """UI文本管理器"""
     
     def __init__(self):
+        """初始化UI文本管理器"""
         self.current_language = "中文"
         self.ui_texts = self._init_ui_texts()
     
     def _init_ui_texts(self) -> Dict[str, Dict[str, str]]:
+        """初始化UI文本字典"""
         return {
                 "中文": {
                 "title": "星露谷物语mod i18n AI翻译工具",
@@ -37,6 +46,7 @@ class UITextManager:
                 "initializing_model": "正在初始化模型...",
                 "model_initialized": "模型初始化完成: {}",
                 "ollama_not_installed": "未检测到 Ollama，请按以下步骤操作：\n1. 下载并安装 Ollama: https://ollama.com/\n2. 启动 ollama app.exe 服务\n3. 下载对应模型，推荐使用 qwen2.5-coder:14b\n4. 低性能电脑使用 qwen2.5-coder:7b",
+                # 按钮功能日志消息
                 "imported_file": "已导入: {}",
                 "import_success": "导入MOD完成,请点击解压MOD按钮",
                 "import_failed": "导入文件失败: {}",
@@ -63,17 +73,21 @@ class UITextManager:
                 "compress_success": "压缩完成: {}",
                 "recompress_completed": "打包完成,可以导入游戏游玩啦~",
                 "compress_error": "压缩过程出错: {}",
+                # 文件对话框和选择相关
                 "select_mod_files": "选择 MOD 文件",
                 "compressed_files": "压缩文件",
                 "all_files": "所有文件",
+                # 编辑对话框相关
                 "edit_translation": "编辑翻译",
                 "original": "原文",
                 "translation": "翻译",
                 "save": "保存",
                 "cancel": "取消",
+                # 设置对话框相关
                 "settings_dialog": "设置",
                 "batch_translate_settings": "批量翻译设置",
                 "auto_save_settings": "自动保存设置",
+                # 文本对比区域相关
                 "text_comparison": "文本对比",
                 "select_mod": "选择MOD:",
                 "refresh_mod_list": "刷新MOD列表",
@@ -82,6 +96,7 @@ class UITextManager:
                 "select_file": "选择文件:",
                 "original_text": "原文",
                 "translation_text": "翻译(可双击文本手动编辑)",
+                # 日志消息相关
                 "please_select_mod": "请先选择要翻译的MOD",
                 "please_select_file": "请先选择要翻译的文件",
                 "no_available_files": "没有可用的翻译文件",
@@ -111,6 +126,7 @@ class UITextManager:
                 "batch_translation_failed": "批量翻译失败: {}",
                 "auto_saved_translations": "已自动保存 {} 条翻译",
                 "translation_dir_not_exist": "Translation目录不存在，无法压缩",
+                # 新增的硬编码文本
                 "select_mod_first": "请先选择要翻译的MOD",
                 "select_file_first": "请先选择要翻译的文件",
                 "no_available_translation_files": "没有可用的翻译文件",
@@ -129,6 +145,7 @@ class UITextManager:
                 "mod_translation_dir_not_exist": "MOD翻译目录不存在",
                 "refresh_file_list_failed": "刷新文件列表失败: {}",
                 "update_translation_display_failed": "更新翻译显示失败: {}",
+                # 文本对比区域相关文本
                 "comparison_data_refreshed": "文本对比数据已刷新",
                 "refresh_comparison_data_failed": "刷新文本对比数据失败: {}",
                 "switch_to_file": "切换到文件: {} (索引: {})",
@@ -138,18 +155,21 @@ class UITextManager:
                 "comparison_data_displayed": "已显示 {} 条对比数据",
                 "display_comparison_failed": "显示对比数据失败: {}",
                 "untranslated_text": "[未翻译]",
+                # 设置对话框详细文本
                 "batch_size_label": "批量翻译大小（每批处理条目数）:",
                 "entries_unit": "个条目",
                 "batch_size_description": "设置每批同时处理的翻译条目数量，较大的值可能提高速度但占用更多资源",
                 "auto_save_interval_label": "自动保存间隔（翻译条目数）:",
                 "auto_save_description": "AI翻译时每翻译指定数量的条目后自动保存JSON文件",
                 "edit_translation_dialog": "编辑翻译",
+                # 设置对话框消息文本
                 "settings_saved": "设置已保存",
                 "error": "错误",
                 "invalid_number_input": "请输入有效的数字",
                 "show_settings_dialog_failed": "显示设置对话框失败",
                 "stopping_translation": "正在停止翻译...",
                 "translation_stopped": "翻译已停止",
+                # 清空目录相关文本
                 "clear_directories_dialog": "清空目录确认",
                 "clear_directories_message": "是否清空以下目录内的所有文件？\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\n此操作不可撤销！",
                 "clear": "清空",
@@ -191,6 +211,7 @@ class UITextManager:
                 "initializing_model": "Initializing model...",
                 "model_initialized": "Model initialized: {}",
                 "ollama_not_installed": "Ollama not detected, please follow these steps:\n1. Download and install Ollama: https://ollama.com/\n2. Start ollama app.exe service\n3. Download corresponding model, recommend qwen2.5-coder:14b\n4. Use qwen2.5-coder:7b for low-performance computers",
+                # Button function log messages
                 "imported_file": "Imported: {}",
                 "import_success": "Successfully imported {} files",
                 "import_failed": "Failed to import files: {}",
@@ -217,18 +238,22 @@ class UITextManager:
                 "compress_success": "Compression completed: {}",
                 "recompress_completed": "MOD recompression completed",
                 "compress_error": "Compression process error: {}",
+                # File dialog texts
                 "select_mod_file": "Select MOD File",
                 "select_files": "Select Files",
                 "extract_i18n_files": "Extract i18n Files",
+                # Edit dialog texts
                 "edit_translation": "Edit Translation",
                 "original_text": "Original Text",
                 "translation": "Translation",
                 "translation_text": "Translation (Double-click to edit manually)",
                 "save": "Save",
                 "cancel": "Cancel",
+                # Settings dialog texts
                 "settings": "Settings",
                 "batch_translate_settings": "Batch Translation Settings",
                 "auto_save_settings": "Auto Save Settings",
+                # Text comparison area texts
                 "text_comparison": "Text Comparison",
                 "select_mod": "Select MOD:",
                 "refresh_mod_list": "Refresh MOD List",
@@ -237,6 +262,7 @@ class UITextManager:
                 "select_file": "Select File:",
                 "original": "Original",
                 "translated": "Translated",
+                # Log messages
                 "please_select_mod_first": "Please select a MOD to translate first",
                 "please_select_file_first": "Please select a file to translate first",
                 "no_available_file_list": "No available file list",
@@ -244,6 +270,7 @@ class UITextManager:
                 "all_files_translated": "All files translated!",
                 "auto_switch_file_failed": "Auto switch file failed",
                 "translation_dir_not_exist": "Translation directory does not exist, cannot compress",
+                # Additional hardcoded text
                 "select_mod_first": "Please select a MOD to translate first",
                 "select_file_first": "Please select a file to translate first",
                 "no_available_translation_files": "No available translation files",
@@ -266,6 +293,7 @@ class UITextManager:
                 "models_loaded": "Model list loaded, {} models in total",
                 "found_entries_no_comparison": "Found {} entries without comparison",
                 "file_no_translation_needed": "File {} does not need translation, skipping",
+                # Text comparison area related texts
                 "comparison_data_refreshed": "Text comparison data refreshed",
                 "extract_i18n_file": "Extracting i18n file: {} -> {}",
                 "loaded_original_file": "Loaded original file for comparison: {}",
@@ -278,6 +306,7 @@ class UITextManager:
                 "comparison_data_displayed": "Displayed {} comparison data entries",
                 "display_comparison_failed": "Failed to display comparison data: {}",
                 "untranslated_text": "[Untranslated]",
+                # Settings dialog detailed texts
                 "batch_size_label": "Batch Translation Size (entries per batch):",
                 "entries_unit": "entries",
                 "batch_size_description": "Set the number of translation entries to process simultaneously. Larger values may improve speed but use more resources",
@@ -285,6 +314,7 @@ class UITextManager:
                 "auto_save_description": "Automatically save JSON files after translating the specified number of entries during AI translation",
                 "edit_translation_dialog": "Edit Translation",
                 "settings_dialog": "Settings",
+                # Settings dialog message texts
                 "settings_saved": "Settings saved",
                 "error": "Error",
                 "invalid_number_input": "Please enter a valid number",
@@ -298,6 +328,7 @@ class UITextManager:
                 "compressed_files_type": "Compressed Files",
                 "all_files_type": "All Files",
                 "translation_dir_not_exist": "Translation directory does not exist, cannot compress",
+                # Clear directories related texts
                 "clear_directories_dialog": "Clear Directories Confirmation",
                 "clear_directories_message": "Are you sure you want to clear all files in the following directories?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nThis operation cannot be undone!",
                 "clear": "Clear",
@@ -337,6 +368,7 @@ class UITextManager:
                 "initializing_model": "モデルを初期化中...",
                 "model_initialized": "モデル初期化完了: {}",
                 "ollama_not_installed": "Ollama が検出されませんでした。以下の手順に従ってください：\n1. Ollama をダウンロードしてインストール: https://ollama.com/\n2. ollama app.exe サービスを起動\n3. 対応するモデルをダウンロード、qwen2.5-coder:14b を推奨\n4. 低性能コンピューターは qwen2.5-coder:7b を使用",
+                # ボタン機能ログメッセージ
                 "imported_file": "インポート済み: {}",
                 "import_success": "{}個のファイルを正常にインポートしました",
                 "import_failed": "ファイルのインポートに失敗しました: {}",
@@ -363,18 +395,22 @@ class UITextManager:
                 "compress_success": "圧縮完了: {}",
                 "recompress_completed": "MOD再圧縮完了",
                 "compress_error": "圧縮プロセスエラー: {}",
+                # ファイルダイアログテキスト
                 "select_mod_file": "MODファイルを選択",
                 "select_files": "ファイルを選択",
                 "extract_i18n_files": "i18nファイルを抽出",
+                # 編集ダイアログテキスト
                 "edit_translation": "翻訳を編集",
                 "original_text": "原文",
                 "translation": "翻訳",
                 "translation_text": "翻訳（ダブルクリックで手動編集）",
                 "save": "保存",
                 "cancel": "キャンセル",
+                # 設定ダイアログテキスト
                 "settings": "設定",
                 "batch_translate_settings": "一括翻訳設定",
                 "auto_save_settings": "自動保存設定",
+                # テキスト比較エリアテキスト
                 "text_comparison": "テキスト比較",
                 "select_mod": "MODを選択:",
                 "refresh_mod_list": "MODリストを更新",
@@ -383,6 +419,7 @@ class UITextManager:
                 "select_file": "ファイルを選択:",
                 "original": "原文",
                 "translated": "翻訳済み",
+                # ログメッセージ
                 "please_select_mod_first": "まず翻訳するMODを選択してください",
                 "please_select_file_first": "まず翻訳するファイルを選択してください",
                 "no_available_file_list": "利用可能なファイルリストがありません",
@@ -390,6 +427,7 @@ class UITextManager:
                 "all_files_translated": "すべてのファイルが翻訳されました！",
                 "auto_switch_file_failed": "ファイルの自動切り替えに失敗しました",
                 "translation_dir_not_exist": "翻訳ディレクトリが存在しないため、圧縮できません",
+                # 追加のハードコードテキスト
                 "select_mod_first": "まず翻訳するMODを選択してください",
                 "select_file_first": "まず翻訳するファイルを選択してください",
                 "no_available_translation_files": "利用可能な翻訳ファイルがありません",
@@ -412,6 +450,7 @@ class UITextManager:
                 "models_loaded": "モデルリストの読み込みが完了しました、合計{}個のモデル",
                 "found_entries_no_comparison": "比較なしで{}個のエントリが見つかりました",
                 "file_no_translation_needed": "ファイル{}は翻訳が不要です、スキップします",
+                # テキスト比較エリア関連のテキスト
                 "comparison_data_refreshed": "テキスト比較データが更新されました",
                 "refresh_comparison_data_failed": "テキスト比較データの更新に失敗しました: {}",
                 "original_file_not_found": "元ファイルが見つかりません: {}",
@@ -420,6 +459,7 @@ class UITextManager:
                 "comparison_data_displayed": "{}個の比較データエントリが表示されました",
                 "display_comparison_failed": "比較データの表示に失敗しました: {}",
                 "untranslated_text": "[未翻訳]",
+                # 設定ダイアログ詳細テキスト
                 "batch_size_label": "バッチ翻訳サイズ（バッチあたりのエントリ数）:",
                 "entries_unit": "エントリ",
                 "batch_size_description": "同時に処理する翻訳エントリの数を設定します。大きな値は速度を向上させる可能性がありますが、より多くのリソースを使用します",
@@ -427,6 +467,7 @@ class UITextManager:
                 "auto_save_description": "AI翻訳中に指定された数のエントリを翻訳した後、JSONファイルを自動保存します",
                 "edit_translation_dialog": "翻訳を編集",
                 "settings_dialog": "設定",
+                # 設定ダイアログメッセージテキスト
                 "settings_saved": "設定が保存されました",
                 "error": "エラー",
                 "invalid_number_input": "有効な数字を入力してください",
@@ -440,6 +481,7 @@ class UITextManager:
                 "compressed_files_type": "圧縮ファイル",
                 "all_files_type": "すべてのファイル",
                 "translation_dir_not_exist": "Translationディレクトリが存在しません、圧縮できません",
+                # 清空目录相关文本
                 "clear_directories_dialog": "ディレクトリクリア確認",
                 "clear_directories_message": "以下のディレクトリ内のすべてのファイルをクリアしますか？\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nこの操作は元に戻せません！",
                 "clear": "クリア",
@@ -480,6 +522,7 @@ class UITextManager:
                 "initializing_model": "모델 초기화 중...",
                 "model_initialized": "모델 초기화 완료: {}",
                 "ollama_not_installed": "Ollama가 감지되지 않았습니다. 다음 단계를 따르세요:\n1. Ollama 다운로드 및 설치: https://ollama.com/\n2. ollama app.exe 서비스 시작\n3. 해당 모델 다운로드, qwen2.5-coder:14b 권장\n4. 저성능 컴퓨터는 qwen2.5-coder:7b 사용",
+                # 버튼 기능 로그 메시지
                 "imported_file": "가져옴: {}",
                 "import_success": "{}개 파일을 성공적으로 가져왔습니다",
                 "import_failed": "파일 가져오기 실패: {}",
@@ -506,18 +549,22 @@ class UITextManager:
                 "compress_success": "압축 완료: {}",
                 "recompress_completed": "MOD 재압축 완료",
                 "compress_error": "압축 프로세스 오류: {}",
+                # 파일 대화상자 텍스트
                 "select_mod_file": "MOD 파일 선택",
                 "select_files": "파일 선택",
                 "extract_i18n_files": "i18n 파일 추출",
+                # 편집 대화상자 텍스트
                 "edit_translation": "번역 편집",
                 "original_text": "원문",
                 "translation": "번역",
                 "translation_text": "번역 (더블클릭하여 수동 편집)",
                 "save": "저장",
                 "cancel": "취소",
+                # 설정 대화상자 텍스트
                 "settings": "설정",
                 "batch_translate_settings": "일괄 번역 설정",
                 "auto_save_settings": "자동 저장 설정",
+                # 텍스트 비교 영역 텍스트
                 "text_comparison": "텍스트 비교",
                 "select_mod": "MOD 선택:",
                 "refresh_mod_list": "MOD 목록 새로고침",
@@ -526,6 +573,7 @@ class UITextManager:
                 "select_file": "파일 선택:",
                 "original": "원문",
                 "translated": "번역됨",
+                # 로그 메시지
                 "please_select_mod_first": "먼저 번역할 MOD를 선택하세요",
                 "please_select_file_first": "먼저 번역할 파일을 선택하세요",
                 "no_available_file_list": "사용 가능한 파일 목록이 없습니다",
@@ -533,6 +581,7 @@ class UITextManager:
                 "all_files_translated": "모든 파일이 번역되었습니다!",
                 "auto_switch_file_failed": "파일 자동 전환 실패",
                 "translation_dir_not_exist": "번역 디렉토리가 존재하지 않아 압축할 수 없습니다",
+                # 추가 하드코드 텍스트
                 "select_mod_first": "먼저 번역할 MOD를 선택하세요",
                 "select_file_first": "먼저 번역할 파일을 선택하세요",
                 "no_available_translation_files": "사용 가능한 번역 파일이 없습니다",
@@ -555,6 +604,7 @@ class UITextManager:
                 "models_loaded": "모델 목록 로드 완료, 총 {}개 모델",
                 "found_entries_no_comparison": "비교 없이 {}개의 항목을 찾았습니다",
                 "file_no_translation_needed": "파일 {}는 번역이 필요하지 않습니다, 건너뜁니다",
+                # 텍스트 비교 영역 관련 텍스트
                 "comparison_data_refreshed": "텍스트 비교 데이터가 새로고침되었습니다",
                 "refresh_comparison_data_failed": "텍스트 비교 데이터 새로고침 실패: {}",
                 "original_file_not_found": "원본 파일을 찾을 수 없습니다: {}",
@@ -563,6 +613,7 @@ class UITextManager:
                 "comparison_data_displayed": "{}개의 비교 데이터 항목이 표시되었습니다",
                 "display_comparison_failed": "비교 데이터 표시 실패: {}",
                 "untranslated_text": "[번역되지 않음]",
+                # 설정 대화상자 세부 텍스트
                 "batch_size_label": "배치 번역 크기 (배치당 항목 수):",
                 "entries_unit": "항목",
                 "batch_size_description": "동시에 처리할 번역 항목 수를 설정합니다. 큰 값은 속도를 향상시킬 수 있지만 더 많은 리소스를 사용합니다",
@@ -570,6 +621,7 @@ class UITextManager:
                 "auto_save_description": "AI 번역 중 지정된 수의 항목을 번역한 후 JSON 파일을 자동으로 저장합니다",
                 "edit_translation_dialog": "번역 편집",
                 "settings_dialog": "설정",
+                # 설정 대화상자 메시지 텍스트
                 "settings_saved": "설정이 저장되었습니다",
                 "error": "오류",
                 "invalid_number_input": "유효한 숫자를 입력하세요",
@@ -583,6 +635,7 @@ class UITextManager:
                 "compressed_files_type": "압축 파일",
                 "all_files_type": "모든 파일",
                 "translation_dir_not_exist": "Translation 디렉토리가 존재하지 않아 압축할 수 없습니다",
+                # 清空目录相关文本
                 "clear_directories_dialog": "디렉토리 지우기 확인",
                 "clear_directories_message": "다음 디렉토리의 모든 파일을 지우시겠습니까?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\n이 작업은 되돌릴 수 없습니다!",
                 "clear": "지우기",
@@ -625,6 +678,7 @@ class UITextManager:
                 "initializing_model": "Initialisation du modèle...",
                 "model_initialized": "Modèle initialisé: {}",
                 "ollama_not_installed": "Ollama non détecté, veuillez suivre ces étapes:\n1. Télécharger et installer Ollama: https://ollama.com/\n2. Démarrer le service ollama app.exe\n3. Télécharger le modèle correspondant, qwen2.5-coder:14b recommandé\n4. Utiliser qwen2.5-coder:7b pour les ordinateurs peu performants",
+                # Messages de journal des fonctions de bouton
                 "imported_file": "Importé: {}",
                 "import_success": "{} fichiers importés avec succès",
                 "import_failed": "Échec de l'importation du fichier: {}",
@@ -651,18 +705,22 @@ class UITextManager:
                 "compress_success": "Compression terminée: {}",
                 "recompress_completed": "Recompression MOD terminée",
                 "compress_error": "Erreur du processus de compression: {}",
+                # Textes de dialogue de fichier
                 "select_mod_file": "Sélectionner Fichier MOD",
                 "select_files": "Sélectionner Fichiers",
                 "extract_i18n_files": "Extraire Fichiers i18n",
+                # Textes de dialogue d'édition
                 "edit_translation": "Éditer Traduction",
                 "original_text": "Texte Original",
                 "translation": "Traduction",
                 "translation_text": "Traduction (Double-cliquez pour éditer manuellement)",
                 "save": "Enregistrer",
                 "cancel": "Annuler",
+                # Textes de dialogue de paramètres
                 "settings": "Paramètres",
                 "batch_translate_settings": "Paramètres Traduction par Lot",
                 "auto_save_settings": "Paramètres Sauvegarde Auto",
+                # Textes de zone de comparaison de texte
                 "text_comparison": "Comparaison de Texte",
                 "select_mod": "Sélectionner MOD:",
                 "refresh_mod_list": "Actualiser Liste MOD",
@@ -671,6 +729,7 @@ class UITextManager:
                 "select_file": "Sélectionner Fichier:",
                 "original": "Original",
                 "translated": "Traduit",
+                # Messages de journal
                 "please_select_mod_first": "Veuillez d'abord sélectionner un MOD à traduire",
                 "please_select_file_first": "Veuillez d'abord sélectionner un fichier à traduire",
                 "no_available_file_list": "Aucune liste de fichiers disponible",
@@ -678,6 +737,7 @@ class UITextManager:
                 "all_files_translated": "Tous les fichiers ont été traduits!",
                 "auto_switch_file_failed": "Échec du basculement automatique de fichier",
                 "translation_dir_not_exist": "Le répertoire de traduction n'existe pas, impossible de compresser",
+                # Texte codé en dur supplémentaire
                 "select_mod_first": "Veuillez d'abord sélectionner un MOD à traduire",
                 "select_file_first": "Veuillez d'abord sélectionner un fichier à traduire",
                 "no_available_translation_files": "Aucun fichier de traduction disponible",
@@ -700,6 +760,7 @@ class UITextManager:
                 "models_loaded": "Liste des modèles chargée, {} modèles au total",
                 "found_entries_no_comparison": "Trouvé {} entrées sans comparaison",
                 "file_no_translation_needed": "Le fichier {} n'a pas besoin de traduction, ignoré",
+                # Textes liés à la zone de comparaison de texte
                 "comparison_data_refreshed": "Données de comparaison de texte actualisées",
                 "refresh_comparison_data_failed": "Échec de l'actualisation des données de comparaison de texte: {}",
                 "original_file_not_found": "Fichier original non trouvé: {}",
@@ -708,6 +769,7 @@ class UITextManager:
                 "comparison_data_displayed": "Affiché {} entrées de données de comparaison",
                 "display_comparison_failed": "Échec de l'affichage des données de comparaison: {}",
                 "untranslated_text": "[Non traduit]",
+                # Textes détaillés de la boîte de dialogue des paramètres
                 "batch_size_label": "Taille de traduction par lot (entrées par lot):",
                 "entries_unit": "entrées",
                 "batch_size_description": "Définir le nombre d'entrées de traduction à traiter simultanément. Des valeurs plus importantes peuvent améliorer la vitesse mais utilisent plus de ressources",
@@ -715,6 +777,7 @@ class UITextManager:
                 "auto_save_description": "Sauvegarder automatiquement les fichiers JSON après avoir traduit le nombre spécifié d'entrées pendant la traduction IA",
                 "edit_translation_dialog": "Modifier la traduction",
                 "settings_dialog": "Paramètres",
+                # Textes de message de la boîte de dialogue des paramètres
                 "settings_saved": "Paramètres sauvegardés",
                 "error": "Erreur",
                 "invalid_number_input": "Veuillez entrer un nombre valide",
@@ -731,6 +794,7 @@ class UITextManager:
                 "compressed_files_type": "Fichiers compressés",
                 "all_files_type": "Tous les fichiers",
                 "translation_dir_not_exist": "Le répertoire Translation n'existe pas, impossible de compresser",
+                # 清空目录相关文本
                 "clear_directories_dialog": "Confirmation de vidage des répertoires",
                 "clear_directories_message": "Êtes-vous sûr de vouloir vider tous les fichiers des répertoires suivants ?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nCette opération ne peut pas être annulée !",
                 "clear": "Vider",
@@ -773,6 +837,7 @@ class UITextManager:
                 "initializing_model": "Modell wird initialisiert...",
                 "model_initialized": "Modell initialisiert: {}",
                 "ollama_not_installed": "Ollama nicht erkannt, bitte folgen Sie diesen Schritten:\n1. Ollama herunterladen und installieren: https://ollama.com/\n2. ollama app.exe Service starten\n3. Entsprechendes Modell herunterladen, qwen2.5-coder:14b empfohlen\n4. qwen2.5-coder:7b für leistungsschwache Computer verwenden",
+                # Button-Funktions-Log-Nachrichten
                 "imported_file": "Importiert: {}",
                 "import_success": "{} Dateien erfolgreich importiert",
                 "import_failed": "Datei-Import fehlgeschlagen: {}",
@@ -799,18 +864,22 @@ class UITextManager:
                 "compress_success": "Komprimierung abgeschlossen: {}",
                 "recompress_completed": "MOD-Rekomprimierung abgeschlossen",
                 "compress_error": "Komprimierungsprozess-Fehler: {}",
+                # Dateidialog-Texte
                 "select_mod_file": "MOD-Datei Auswählen",
                 "select_files": "Dateien Auswählen",
                 "extract_i18n_files": "i18n-Dateien Extrahieren",
+                # Bearbeitungsdialog-Texte
                 "edit_translation": "Übersetzung Bearbeiten",
                 "original_text": "Originaltext",
                 "translation": "Übersetzung",
                 "translation_text": "Übersetzung (Doppelklicken zum manuellen Bearbeiten)",
                 "save": "Speichern",
                 "cancel": "Abbrechen",
+                # Einstellungsdialog-Texte
                 "settings": "Einstellungen",
                 "batch_translate_settings": "Stapelübersetzung Einstellungen",
                 "auto_save_settings": "Automatisches Speichern Einstellungen",
+                # Textvergleichsbereich-Texte
                 "text_comparison": "Textvergleich",
                 "select_mod": "MOD Auswählen:",
                 "refresh_mod_list": "MOD-Liste Aktualisieren",
@@ -819,6 +888,7 @@ class UITextManager:
                 "select_file": "Datei Auswählen:",
                 "original": "Original",
                 "translated": "Übersetzt",
+                # Log-Nachrichten
                 "please_select_mod_first": "Bitte wählen Sie zuerst einen MOD zum Übersetzen aus",
                 "please_select_file_first": "Bitte wählen Sie zuerst eine Datei zum Übersetzen aus",
                 "no_available_file_list": "Keine verfügbare Dateiliste",
@@ -826,6 +896,7 @@ class UITextManager:
                 "all_files_translated": "Alle Dateien wurden übersetzt!",
                 "auto_switch_file_failed": "Automatischer Dateiwechsel fehlgeschlagen",
                 "translation_dir_not_exist": "Übersetzungsverzeichnis existiert nicht, kann nicht komprimieren",
+                # Zusätzlicher hartcodierter Text
                 "select_mod_first": "Bitte wählen Sie zuerst einen MOD zum Übersetzen aus",
                 "select_file_first": "Bitte wählen Sie zuerst eine Datei zum Übersetzen aus",
                 "no_available_translation_files": "Keine verfügbaren Übersetzungsdateien",
@@ -848,6 +919,7 @@ class UITextManager:
                 "models_loaded": "Modellliste geladen, {} Modelle insgesamt",
                 "found_entries_no_comparison": "{} Einträge ohne Vergleich gefunden",
                 "file_no_translation_needed": "Datei {} benötigt keine Übersetzung, übersprungen",
+                # Textvergleichsbereich-bezogene Texte
                 "comparison_data_refreshed": "Textvergleichsdaten aktualisiert",
                 "refresh_comparison_data_failed": "Aktualisierung der Textvergleichsdaten fehlgeschlagen: {}",
                 "original_file_not_found": "Originaldatei nicht gefunden: {}",
@@ -856,6 +928,7 @@ class UITextManager:
                 "comparison_data_displayed": "{} Vergleichsdateneinträge angezeigt",
                 "display_comparison_failed": "Anzeige der Vergleichsdaten fehlgeschlagen: {}",
                 "untranslated_text": "[Unübersetzt]",
+                # Detaillierte Texte für Einstellungsdialog
                 "batch_size_label": "Batch-Übersetzungsgröße (Einträge pro Batch):",
                 "entries_unit": "Einträge",
                 "batch_size_description": "Anzahl der gleichzeitig zu verarbeitenden Übersetzungseinträge festlegen. Größere Werte können die Geschwindigkeit verbessern, verbrauchen aber mehr Ressourcen",
@@ -863,6 +936,7 @@ class UITextManager:
                 "auto_save_description": "JSON-Dateien automatisch speichern, nachdem die angegebene Anzahl von Einträgen während der KI-Übersetzung übersetzt wurde",
                 "edit_translation_dialog": "Übersetzung bearbeiten",
                 "settings_dialog": "Einstellungen",
+                # Einstellungsdialog-Nachrichtentexte
                 "settings_saved": "Einstellungen gespeichert",
                 "error": "Fehler",
                 "invalid_number_input": "Bitte geben Sie eine gültige Zahl ein",
@@ -879,6 +953,7 @@ class UITextManager:
                 "loaded_original_file": "Originaldatei zum Vergleich geladen: {}",
                 "auto_saved_translations": "Automatisch {} Übersetzungen gespeichert",
                 "translation_dir_not_exist": "Translation-Verzeichnis existiert nicht, kann nicht komprimieren",
+                # 清空目录相关文本
                 "clear_directories_dialog": "Verzeichnisse leeren bestätigen",
                 "clear_directories_message": "Sind Sie sicher, dass Sie alle Dateien in den folgenden Verzeichnissen löschen möchten?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nDieser Vorgang kann nicht rückgängig gemacht werden!",
                 "clear": "Leeren",
@@ -921,6 +996,7 @@ class UITextManager:
                 "initializing_model": "Inicializando modelo...",
                 "model_initialized": "Modelo inicializado: {}",
                 "ollama_not_installed": "Ollama no detectado, por favor siga estos pasos:\n1. Descargar e instalar Ollama: https://ollama.com/\n2. Iniciar el servicio ollama app.exe\n3. Descargar el modelo correspondiente, se recomienda qwen2.5-coder:14b\n4. Usar qwen2.5-coder:7b para computadoras de bajo rendimiento",
+                # Mensajes de registro de funciones de botón
                 "imported_file": "Importado: {}",
                 "import_success": "{} archivos importados exitosamente",
                 "import_failed": "Falló la importación del archivo: {}",
@@ -947,18 +1023,22 @@ class UITextManager:
                 "compress_success": "Compresión completada: {}",
                 "recompress_completed": "Recompresión de MOD completada",
                 "compress_error": "Error del proceso de compresión: {}",
+                # Textos de diálogo de archivo
                 "select_mod_file": "Seleccionar Archivo MOD",
                 "select_files": "Seleccionar Archivos",
                 "extract_i18n_files": "Extraer Archivos i18n",
+                # Textos de diálogo de edición
                 "edit_translation": "Editar Traducción",
                 "original_text": "Texto Original",
                 "translation": "Traducción",
                 "translation_text": "Traducción (Doble clic para editar manualmente)",
                 "save": "Guardar",
                 "cancel": "Cancelar",
+                # Textos de diálogo de configuración
                 "settings": "Configuración",
                 "batch_translate_settings": "Configuración de Traducción por Lotes",
                 "auto_save_settings": "Configuración de Guardado Automático",
+                # Textos del área de comparación de texto
                 "text_comparison": "Comparación de Texto",
                 "select_mod": "Seleccionar MOD:",
                 "refresh_mod_list": "Actualizar Lista de MOD",
@@ -967,6 +1047,7 @@ class UITextManager:
                 "select_file": "Seleccionar Archivo:",
                 "original": "Original",
                 "translated": "Traducido",
+                # Mensajes de registro
                 "please_select_mod_first": "Por favor, seleccione primero un MOD para traducir",
                 "please_select_file_first": "Por favor, seleccione primero un archivo para traducir",
                 "no_available_file_list": "No hay lista de archivos disponible",
@@ -974,6 +1055,7 @@ class UITextManager:
                 "all_files_translated": "¡Todos los archivos han sido traducidos!",
                 "auto_switch_file_failed": "Falló el cambio automático de archivo",
                 "translation_dir_not_exist": "El directorio de traducción no existe, no se puede comprimir",
+                # Texto hardcodeado adicional
                 "select_mod_first": "Por favor, seleccione primero un MOD para traducir",
                 "select_file_first": "Por favor, seleccione primero un archivo para traducir",
                 "no_available_translation_files": "No hay archivos de traducción disponibles",
@@ -996,6 +1078,7 @@ class UITextManager:
                 "models_loaded": "Lista de modelos cargada, {} modelos en total",
                 "found_entries_no_comparison": "Se encontraron {} entradas sin comparación",
                 "file_no_translation_needed": "El archivo {} no necesita traducción, omitido",
+                # Textos relacionados con el área de comparación de texto
                 "comparison_data_refreshed": "Datos de comparación de texto actualizados",
                 "refresh_comparison_data_failed": "Error al actualizar los datos de comparación de texto: {}",
                 "original_file_not_found": "Archivo original no encontrado: {}",
@@ -1004,6 +1087,7 @@ class UITextManager:
                 "comparison_data_displayed": "Se mostraron {} entradas de datos de comparación",
                 "display_comparison_failed": "Error al mostrar datos de comparación: {}",
                 "untranslated_text": "[Sin traducir]",
+                # Textos detallados del diálogo de configuración
                 "batch_size_label": "Tamaño de traducción por lotes (entradas por lote):",
                 "entries_unit": "entradas",
                 "batch_size_description": "Establecer el número de entradas de traducción a procesar simultáneamente. Valores más grandes pueden mejorar la velocidad pero usan más recursos",
@@ -1011,6 +1095,7 @@ class UITextManager:
                 "auto_save_description": "Guardar automáticamente archivos JSON después de traducir el número especificado de entradas durante la traducción IA",
                 "edit_translation_dialog": "Editar traducción",
                 "settings_dialog": "Configuración",
+                # Textos de mensaje del diálogo de configuración
                 "settings_saved": "Configuración guardada",
                 "error": "Error",
                 "invalid_number_input": "Por favor ingrese un número válido",
@@ -1027,6 +1112,7 @@ class UITextManager:
                 "loaded_original_file": "Archivo original cargado para comparación: {}",
                 "auto_saved_translations": "Guardado automático de {} traducciones",
                 "translation_dir_not_exist": "El directorio Translation no existe, no se puede comprimir",
+                # 清空目录相关文本
                 "clear_directories_dialog": "Confirmar vaciado de directorios",
                 "clear_directories_message": "¿Está seguro de que desea vaciar todos los archivos de los siguientes directorios?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\n¡Esta operación no se puede deshacer!",
                 "clear": "Vaciar",
@@ -1069,6 +1155,7 @@ class UITextManager:
                 "initializing_model": "Инициализация модели...",
                 "model_initialized": "Модель инициализирована: {}",
                 "ollama_not_installed": "Ollama не обнаружен, пожалуйста, выполните следующие шаги:\n1. Скачать и установить Ollama: https://ollama.com/\n2. Запустить службу ollama app.exe\n3. Скачать соответствующую модель, рекомендуется qwen2.5-coder:14b\n4. Использовать qwen2.5-coder:7b для компьютеров с низкой производительностью",
+                # Сообщения журнала функций кнопок
                 "imported_file": "Импортировано: {}",
                 "import_success": "{} файлов успешно импортировано",
                 "import_failed": "Не удалось импортировать файл: {}",
@@ -1095,18 +1182,22 @@ class UITextManager:
                 "compress_success": "Сжатие завершено: {}",
                 "recompress_completed": "Пересжатие MOD завершено",
                 "compress_error": "Ошибка процесса сжатия: {}",
+                # Тексты диалогов файлов
                 "select_mod_file": "Выбрать Файл MOD",
                 "select_files": "Выбрать Файлы",
                 "extract_i18n_files": "Извлечь Файлы i18n",
+                # Тексты диалога редактирования
                 "edit_translation": "Редактировать Перевод",
                 "original_text": "Исходный Текст",
                 "translation": "Перевод",
                 "translation_text": "Перевод (Дважды щелкните для ручного редактирования)",
                 "save": "Сохранить",
                 "cancel": "Отмена",
+                # Тексты диалога настроек
                 "settings": "Настройки",
                 "batch_translate_settings": "Настройки Пакетного Перевода",
                 "auto_save_settings": "Настройки Автосохранения",
+                # Тексты области сравнения текста
                 "text_comparison": "Сравнение Текста",
                 "select_mod": "Выбрать MOD:",
                 "refresh_mod_list": "Обновить Список MOD",
@@ -1115,6 +1206,7 @@ class UITextManager:
                 "select_file": "Выбрать Файл:",
                 "original": "Оригинал",
                 "translated": "Переведено",
+                # Сообщения журнала
                 "please_select_mod_first": "Пожалуйста, сначала выберите MOD для перевода",
                 "please_select_file_first": "Пожалуйста, сначала выберите файл для перевода",
                 "no_available_file_list": "Нет доступного списка файлов",
@@ -1122,6 +1214,7 @@ class UITextManager:
                 "all_files_translated": "Все файлы переведены!",
                 "auto_switch_file_failed": "Не удалось автоматически переключить файл",
                 "translation_dir_not_exist": "Каталог переводов не существует, невозможно сжать",
+                # Дополнительный жестко закодированный текст
                 "select_mod_first": "Пожалуйста, сначала выберите MOD для перевода",
                 "select_file_first": "Пожалуйста, сначала выберите файл для перевода",
                 "no_available_translation_files": "Нет доступных файлов перевода",
@@ -1144,6 +1237,7 @@ class UITextManager:
                 "models_loaded": "Список моделей загружен, всего {} моделей",
                 "found_entries_no_comparison": "Найдено {} записей без сравнения",
                 "file_no_translation_needed": "Файл {} не нуждается в переводе, пропущен",
+                # Тексты, связанные с областью сравнения текста
                 "comparison_data_refreshed": "Данные сравнения текста обновлены",
                 "refresh_comparison_data_failed": "Не удалось обновить данные сравнения текста: {}",
                 "original_file_not_found": "Исходный файл не найден: {}",
@@ -1152,6 +1246,7 @@ class UITextManager:
                 "comparison_data_displayed": "Отображено {} записей данных сравнения",
                 "display_comparison_failed": "Не удалось отобразить данные сравнения: {}",
                 "untranslated_text": "[Не переведено]",
+                # Подробные тексты диалога настроек
                 "batch_size_label": "Размер пакетного перевода (записей в пакете):",
                 "entries_unit": "записей",
                 "batch_size_description": "Установить количество записей перевода для одновременной обработки. Большие значения могут улучшить скорость, но используют больше ресурсов",
@@ -1159,6 +1254,7 @@ class UITextManager:
                 "auto_save_description": "Автоматически сохранять JSON файлы после перевода указанного количества записей во время ИИ перевода",
                 "edit_translation_dialog": "Редактировать перевод",
                 "settings_dialog": "Настройки",
+                # Тексты сообщений диалога настроек
                 "settings_saved": "Настройки сохранены",
                 "error": "Ошибка",
                 "invalid_number_input": "Пожалуйста, введите действительное число",
@@ -1175,6 +1271,7 @@ class UITextManager:
                 "loaded_original_file": "Оригинальный файл загружен для сравнения: {}",
                 "auto_saved_translations": "Автоматически сохранено {} переводов",
                 "translation_dir_not_exist": "Каталог Translation не существует, сжатие невозможно",
+                # 清空目录相关文本
                 "clear_directories_dialog": "Подтверждение очистки каталогов",
                 "clear_directories_message": "Вы уверены, что хотите очистить все файлы в следующих каталогах?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nЭта операция необратима!",
                 "clear": "Очистить",
@@ -1217,6 +1314,7 @@ class UITextManager:
                 "initializing_model": "Inicializando modelo...",
                 "model_initialized": "Modelo inicializado: {}",
                 "ollama_not_installed": "Ollama não detectado, por favor siga estes passos:\n1. Baixar e instalar Ollama: https://ollama.com/\n2. Iniciar o serviço ollama app.exe\n3. Baixar o modelo correspondente, recomenda-se qwen2.5-coder:14b\n4. Usar qwen2.5-coder:7b para computadores de baixo desempenho",
+                # Mensagens de log das funções dos botões
                 "imported_file": "Importado: {}",
                 "import_success": "{} arquivos importados com sucesso",
                 "import_failed": "Falha ao importar arquivo: {}",
@@ -1243,17 +1341,21 @@ class UITextManager:
                 "compress_success": "Compressão concluída: {}",
                 "recompress_completed": "Recompressão de MOD concluída",
                 "compress_error": "Erro no processo de compressão: {}",
+                # Textos de diálogo de arquivo
                 "select_mod_file": "Selecionar Arquivo MOD",
                 "select_files": "Selecionar Arquivos",
                 "extract_i18n_files": "Extrair Arquivos i18n",
+                # Textos de diálogo de edição
                 "edit_translation": "Editar Tradução",
                 "original_text": "Texto Original",
                 "translation": "Tradução",
                 "save": "Salvar",
                 "cancel": "Cancelar",
+                # Textos de diálogo de configuração
                 "settings": "Configurações",
                 "batch_translate_settings": "Configurações de Tradução em Lote",
                 "auto_save_settings": "Configurações de Salvamento Automático",
+                # Textos da área de comparação de texto
                 "text_comparison": "Comparação de Texto",
                 "select_mod": "Selecionar MOD:",
                 "refresh_mod_list": "Atualizar Lista de MOD",
@@ -1263,6 +1365,7 @@ class UITextManager:
                 "original": "Original",
                 "translation_text": "Tradução (Clique duplo para editar manualmente)",
                 "translated": "Traduzido",
+                # Mensagens de log
                 "please_select_mod_first": "Por favor, selecione primeiro um MOD para traduzir",
                 "please_select_file_first": "Por favor, selecione primeiro um arquivo para traduzir",
                 "no_available_file_list": "Nenhuma lista de arquivos disponível",
@@ -1270,6 +1373,7 @@ class UITextManager:
                 "all_files_translated": "Todos os arquivos foram traduzidos!",
                 "auto_switch_file_failed": "Falha na mudança automática de arquivo",
                 "translation_dir_not_exist": "Diretório de tradução não existe, não é possível comprimir",
+                # Texto hardcoded adicional
                 "select_mod_first": "Por favor, selecione primeiro um MOD para traduzir",
                 "select_file_first": "Por favor, selecione primeiro um arquivo para traduzir",
                 "no_available_translation_files": "Nenhum arquivo de tradução disponível",
@@ -1292,6 +1396,7 @@ class UITextManager:
                 "models_loaded": "Lista de modelos carregada, {} modelos no total",
                 "found_entries_no_comparison": "Encontradas {} entradas sem comparação",
                 "file_no_translation_needed": "Arquivo {} não precisa de tradução, ignorado",
+                # Textos relacionados à área de comparação de texto
                 "comparison_data_refreshed": "Dados de comparação de texto atualizados",
                 "refresh_comparison_data_failed": "Falha ao atualizar dados de comparação de texto: {}",
                 "original_file_not_found": "Arquivo original não encontrado: {}",
@@ -1300,6 +1405,7 @@ class UITextManager:
                 "comparison_data_displayed": "Exibidas {} entradas de dados de comparação",
                 "display_comparison_failed": "Falha ao exibir dados de comparação: {}",
                 "untranslated_text": "[Não traduzido]",
+                # Textos detalhados do diálogo de configurações
                 "batch_size_label": "Tamanho da tradução em lote (entradas por lote):",
                 "entries_unit": "entradas",
                 "batch_size_description": "Definir o número de entradas de tradução para processar simultaneamente. Valores maiores podem melhorar a velocidade mas usam mais recursos",
@@ -1307,6 +1413,7 @@ class UITextManager:
                 "auto_save_description": "Salvar automaticamente arquivos JSON após traduzir o número especificado de entradas durante a tradução IA",
                 "edit_translation_dialog": "Editar tradução",
                 "settings_dialog": "Configurações",
+                # Textos de mensagem do diálogo de configurações
                 "settings_saved": "Configurações salvas",
                 "error": "Erro",
                 "invalid_number_input": "Por favor, insira um número válido",
@@ -1323,6 +1430,7 @@ class UITextManager:
                 "loaded_original_file": "Arquivo original carregado para comparação: {}",
                 "auto_saved_translations": "Salvamento automático de {} traduções",
                 "translation_dir_not_exist": "Diretório Translation não existe, não é possível comprimir",
+                # 清空目录相关文本
                 "clear_directories_dialog": "Confirmação de limpeza de diretórios",
                 "clear_directories_message": "Tem certeza de que deseja limpar todos os arquivos dos seguintes diretórios?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nEsta operação não pode ser desfeita!",
                 "clear": "Limpar",
@@ -1365,6 +1473,7 @@ class UITextManager:
                 "initializing_model": "Inizializzazione modello...",
                 "model_initialized": "Modello inizializzato: {}",
                 "ollama_not_installed": "Ollama non rilevato, si prega di seguire questi passaggi:\n1. Scaricare e installare Ollama: https://ollama.com/\n2. Avviare il servizio ollama app.exe\n3. Scaricare il modello corrispondente, si consiglia qwen2.5-coder:14b\n4. Utilizzare qwen2.5-coder:7b per computer a basse prestazioni",
+                # Messaggi di log delle funzioni dei pulsanti
                 "imported_file": "Importato: {}",
                 "import_success": "{} file importati con successo",
                 "import_failed": "Importazione file fallita: {}",
@@ -1391,17 +1500,21 @@ class UITextManager:
                 "compress_success": "Compressione completata: {}",
                 "recompress_completed": "Ricompressione MOD completata",
                 "compress_error": "Errore del processo di compressione: {}",
+                # Testi di dialogo file
                 "select_mod_file": "Seleziona File MOD",
                 "select_files": "Seleziona File",
                 "extract_i18n_files": "Estrai File i18n",
+                # Testi di dialogo modifica
                 "edit_translation": "Modifica Traduzione",
                 "original_text": "Testo Originale",
                 "translation": "Traduzione",
                 "save": "Salva",
                 "cancel": "Annulla",
+                # Testi di dialogo impostazioni
                 "settings": "Impostazioni",
                 "batch_translate_settings": "Impostazioni Traduzione Batch",
                 "auto_save_settings": "Impostazioni Salvataggio Automatico",
+                # Testi area confronto testo
                 "text_comparison": "Confronto Testo",
                 "select_mod": "Seleziona MOD:",
                 "refresh_mod_list": "Aggiorna Elenco MOD",
@@ -1411,6 +1524,7 @@ class UITextManager:
                 "original": "Originale",
                 "translation_text": "Traduzione (Doppio clic per modificare manualmente)",
                 "translated": "Tradotto",
+                # Messaggi di log
                 "please_select_mod_first": "Si prega di selezionare prima un MOD da tradurre",
                 "please_select_file_first": "Si prega di selezionare prima un file da tradurre",
                 "no_available_file_list": "Nessun elenco file disponibile",
@@ -1418,6 +1532,7 @@ class UITextManager:
                 "all_files_translated": "Tutti i file sono stati tradotti!",
                 "auto_switch_file_failed": "Cambio automatico file fallito",
                 "translation_dir_not_exist": "La directory di traduzione non esiste, impossibile comprimere",
+                # Testo hardcoded aggiuntivo
                 "select_mod_first": "Si prega di selezionare prima un MOD da tradurre",
                 "select_file_first": "Si prega di selezionare prima un file da tradurre",
                 "no_available_translation_files": "Nessun file di traduzione disponibile",
@@ -1440,6 +1555,7 @@ class UITextManager:
                 "models_loaded": "Elenco modelli caricato, {} modelli in totale",
                 "found_entries_no_comparison": "Trovate {} voci senza confronto",
                 "file_no_translation_needed": "Il file {} non necessita traduzione, saltato",
+                # Testi relativi all'area di confronto del testo
                 "comparison_data_refreshed": "Dati di confronto del testo aggiornati",
                 "refresh_comparison_data_failed": "Aggiornamento dei dati di confronto del testo fallito: {}",
                 "original_file_not_found": "File originale non trovato: {}",
@@ -1448,6 +1564,7 @@ class UITextManager:
                 "comparison_data_displayed": "Visualizzate {} voci di dati di confronto",
                 "display_comparison_failed": "Visualizzazione dati di confronto fallita: {}",
                 "untranslated_text": "[Non tradotto]",
+                # Testi dettagliati della finestra di dialogo delle impostazioni
                 "batch_size_label": "Dimensione traduzione batch (voci per batch):",
                 "entries_unit": "voci",
                 "batch_size_description": "Impostare il numero di voci di traduzione da elaborare simultaneamente. Valori più grandi possono migliorare la velocità ma usano più risorse",
@@ -1455,6 +1572,7 @@ class UITextManager:
                 "auto_save_description": "Salva automaticamente i file JSON dopo aver tradotto il numero specificato di voci durante la traduzione IA",
                 "edit_translation_dialog": "Modifica traduzione",
                 "settings_dialog": "Impostazioni",
+                # Testi di messaggio della finestra di dialogo delle impostazioni
                 "settings_saved": "Impostazioni salvate",
                 "error": "Errore",
                 "invalid_number_input": "Inserisci un numero valido",
@@ -1471,6 +1589,7 @@ class UITextManager:
                 "loaded_original_file": "File originale caricato per confronto: {}",
                 "auto_saved_translations": "Salvataggio automatico di {} traduzioni",
                 "translation_dir_not_exist": "La directory Translation non esiste, impossibile comprimere",
+                # 清空目录相关文本
                 "clear_directories_dialog": "Conferma svuotamento directory",
                 "clear_directories_message": "Sei sicuro di voler svuotare tutti i file nelle seguenti directory?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nQuesta operazione non può essere annullata!",
                 "clear": "Svuota",
@@ -1539,17 +1658,21 @@ class UITextManager:
                 "compress_success": "Sıkıştırma tamamlandı: {}",
                 "recompress_completed": "MOD yeniden sıkıştırma tamamlandı",
                 "compress_error": "Sıkıştırma işlemi hatası: {}",
+                # Dosya diyalog metinleri
                 "select_mod_file": "MOD Dosyası Seç",
                 "select_files": "Dosyaları Seç",
                 "extract_i18n_files": "i18n Dosyalarını Çıkart",
+                # Düzenleme diyalog metinleri
                 "edit_translation": "Çeviriyi Düzenle",
                 "original_text": "Orijinal Metin",
                 "translation": "Çeviri",
                 "save": "Kaydet",
                 "cancel": "İptal",
+                # Ayarlar diyalog metinleri
                 "settings": "Ayarlar",
                 "batch_translate_settings": "Toplu Çeviri Ayarları",
                 "auto_save_settings": "Otomatik Kaydetme Ayarları",
+                # Metin karşılaştırma alanı metinleri
                 "text_comparison": "Metin Karşılaştırması",
                 "select_mod": "MOD Seç:",
                 "refresh_mod_list": "MOD Listesini Yenile",
@@ -1559,6 +1682,7 @@ class UITextManager:
                 "original": "Orijinal",
                 "translation_text": "Çeviri (Manuel düzenleme için çift tıklayın)",
                 "translated": "Çevrilmiş",
+                # Log mesajları
                 "please_select_mod_first": "Lütfen önce çevrilecek bir MOD seçin",
                 "please_select_file_first": "Lütfen önce çevrilecek bir dosya seçin",
                 "no_available_file_list": "Kullanılabilir dosya listesi yok",
@@ -1566,6 +1690,7 @@ class UITextManager:
                 "all_files_translated": "Tüm dosyalar çevrildi!",
                 "auto_switch_file_failed": "Otomatik dosya değiştirme başarısız",
                 "translation_dir_not_exist": "Çeviri dizini mevcut değil, sıkıştırılamıyor",
+                # Ek sabit kodlanmış metin
                 "select_mod_first": "Lütfen önce çevrilecek bir MOD seçin",
                 "select_file_first": "Lütfen önce çevrilecek bir dosya seçin",
                 "no_available_translation_files": "Kullanılabilir çeviri dosyası yok",
@@ -1588,6 +1713,7 @@ class UITextManager:
                 "models_loaded": "Model listesi yüklendi, toplam {} model",
                 "found_entries_no_comparison": "Karşılaştırmasız {} giriş bulundu",
                 "file_no_translation_needed": "Dosya {} çeviriye ihtiyaç duymuyor, atlandı",
+                # Metin karşılaştırma alanı ile ilgili metinler
                 "comparison_data_refreshed": "Metin karşılaştırma verileri yenilendi",
                 "refresh_comparison_data_failed": "Metin karşılaştırma verilerini yenileme başarısız: {}",
                 "original_file_not_found": "Orijinal dosya bulunamadı: {}",
@@ -1596,6 +1722,7 @@ class UITextManager:
                 "comparison_data_displayed": "{} karşılaştırma veri girişi görüntülendi",
                 "display_comparison_failed": "Karşılaştırma verilerini görüntüleme başarısız: {}",
                 "untranslated_text": "[Çevrilmemiş]",
+                # Ayarlar iletişim kutusunun ayrıntılı metinleri
                 "batch_size_label": "Toplu çeviri boyutu (toplu başına girdi):",
                 "entries_unit": "girdi",
                 "batch_size_description": "Aynı anda işlenecek çeviri girdilerinin sayısını ayarlayın. Daha büyük değerler hızı artırabilir ancak daha fazla kaynak kullanır",
@@ -1603,6 +1730,7 @@ class UITextManager:
                 "auto_save_description": "AI çevirisi sırasında belirtilen sayıda girdi çevrildikten sonra JSON dosyalarını otomatik olarak kaydet",
                 "edit_translation_dialog": "Çeviriyi Düzenle",
                 "settings_dialog": "Ayarlar",
+                # Ayarlar iletişim kutusu mesaj metinleri
                 "settings_saved": "Ayarlar kaydedildi",
                 "error": "Hata",
                 "invalid_number_input": "Lütfen geçerli bir sayı girin",
@@ -1619,6 +1747,7 @@ class UITextManager:
                 "loaded_original_file": "Karşılaştırma için orijinal dosya yüklendi: {}",
                 "auto_saved_translations": "Otomatik olarak {} çeviri kaydedildi",
                 "translation_dir_not_exist": "Translation dizini mevcut değil, sıkıştırılamıyor",
+                # 清空目录相关文本
                 "clear_directories_dialog": "Dizin temizleme onayı",
                 "clear_directories_message": "Aşağıdaki dizinlerdeki tüm dosyaları temizlemek istediğinizden emin misiniz?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nBu işlem geri alınamaz!",
                 "clear": "Temizle",
@@ -1688,17 +1817,20 @@ class UITextManager:
                 "recompress_completed": "MOD újratömörítés befejezve",
                 "compress_error": "Tömörítési folyamat hiba: {}",
                 
+                # 文件对话框
                 "select_import_folder": "Válassza ki az importálási mappát",
                 "select_extract_folder": "Válassza ki a kicsomagolási mappát",
                 "select_translation_folder": "Válassza ki a fordítási mappát",
                 "select_compress_folder": "Válassza ki a tömörítési mappát",
                 
+                # 编辑对话框
                 "edit_translation": "Fordítás szerkesztése",
                 "original_text": "Eredeti szöveg:",
                 "translation_text": "Fordított szöveg (Dupla kattintás a kézi szerkesztéshez):",
                 "save_button": "Mentés",
                 "cancel_button": "Mégse",
                 
+                # 设置对话框
                 "settings": "Beállítások",
                 "batch_translate_settings": "Kötegelt Fordítás Beállítások",
                 "auto_save_settings": "Automatikus Mentés Beállítások",
@@ -1714,6 +1846,7 @@ class UITextManager:
                 "apply_button": "Alkalmaz",
                 "close_button": "Bezárás",
                 
+                # 文本对比区域
                 "text_comparison": "Szöveg összehasonlítás",
                 "select_mod": "MOD kiválasztása:",
                 "refresh_mod_list": "MOD Lista Frissítése",
@@ -1727,11 +1860,13 @@ class UITextManager:
                 "file_not_found": "Fájl nem található: {}",
                 "json_parse_error": "JSON elemzési hiba: {}",
                 
+                # 日志消息
                 "log_messages": "Napló üzenetek",
                 "progress_info": "Haladási információ: {}/{}",
                 "translation_progress": "Fordítási haladás",
                 "current_file_progress": "Jelenlegi fájl haladása: {}/{}",
                 "overall_progress": "Összesített haladás: {}/{}",
+                # További beépített szövegek
                 "select_mod_first": "Kérjük, először válasszon ki egy fordítandó MOD-ot",
                 "select_file_first": "Kérjük, először válasszon ki egy fordítandó fájlt",
                 "no_available_translation_files": "Nincsenek elérhető fordítási fájlok",
@@ -1754,6 +1889,7 @@ class UITextManager:
                 "models_loaded": "Modell lista betöltve, összesen {} modell",
                 "found_entries_no_comparison": "Összehasonlítás nélküli {} bejegyzés található",
                 "file_no_translation_needed": "A {} fájl nem igényel fordítást, kihagyva",
+                # Szöveg összehasonlítási területtel kapcsolatos szövegek
                 "comparison_data_refreshed": "Szöveg összehasonlítási adatok frissítve",
                 "refresh_comparison_data_failed": "Szöveg összehasonlítási adatok frissítése sikertelen: {}",
                 "original_file_not_found": "Eredeti fájl nem található: {}",
@@ -1763,6 +1899,7 @@ class UITextManager:
                 "display_comparison_failed": "Összehasonlítási adatok megjelenítése sikertelen: {}",
                 "untranslated_text": "[Nem fordított]",
                 "translation_dir_not_exist": "Fordítási könyvtár nem létezik, nem lehet tömöríteni",
+                # Beállítások párbeszédpanel részletes szövegei
                 "batch_size_label": "Kötegelt fordítás mérete (bejegyzés/köteg):",
                 "entries_unit": "bejegyzés",
                 "batch_size_description": "Állítsa be az egyszerre feldolgozandó fordítási bejegyzések számát. A nagyobb értékek növelhetik a sebességet, de több erőforrást használnak",
@@ -1770,6 +1907,7 @@ class UITextManager:
                 "auto_save_description": "AI fordítás során automatikusan mentse a JSON fájlokat a megadott számú bejegyzés lefordítása után",
                 "edit_translation_dialog": "Fordítás szerkesztése",
                 "settings_dialog": "Beállítások",
+                # Beállítások párbeszédpanel üzenet szövegei
                 "settings_saved": "Beállítások mentve",
                 "error": "Hiba",
                 "invalid_number_input": "Kérjük, adjon meg egy érvényes számot",
@@ -1786,6 +1924,7 @@ class UITextManager:
                 "loaded_original_file": "Eredeti fájl betöltve összehasonlításhoz: {}",
                 "auto_saved_translations": "Automatikusan {} fordítás mentve",
                 "translation_dir_not_exist": "A Translation könyvtár nem létezik, nem lehet tömöríteni",
+                # 清空目录相关文本
                 "clear_directories_dialog": "Könyvtárak törlésének megerősítése",
                 "clear_directories_message": "Biztosan törölni szeretné az összes fájlt a következő könyvtárakból?\n\nData\\1Import\nData\\2Extract\nData\\3Completei18n\n\nEz a művelet nem vonható vissza!",
                 "clear": "Törlés",
@@ -1803,10 +1942,24 @@ class UITextManager:
             },
         }
     def set_language(self, language: str) -> None:
+        """设置当前语言
+        
+        Args:
+            language: 语言名称
+        """
         if language in self.ui_texts:
             self.current_language = language
     
     def get_text(self, key: str, *args) -> str:
+        """获取UI文本
+        
+        Args:
+            key: 文本键名
+            *args: 格式化参数
+            
+        Returns:
+            格式化后的文本
+        """
         try:
             text = self.ui_texts.get(self.current_language, {}).get(key, key)
             if args:
@@ -1816,15 +1969,29 @@ class UITextManager:
             return key
     
     def get_current_language(self) -> str:
+        """获取当前语言"""
         return self.current_language
     
     def get_available_languages(self) -> list:
+        """获取可用语言列表"""
         return list(self.ui_texts.keys())
     
     def add_language(self, language: str, texts: Dict[str, str]) -> None:
+        """添加新语言
+        
+        Args:
+            language: 语言名称
+            texts: 文本字典
+        """
         self.ui_texts[language] = texts
     
     def update_texts(self, language: str, texts: Dict[str, str]) -> None:
+        """更新指定语言的文本
+        
+        Args:
+            language: 语言名称
+            texts: 要更新的文本字典
+        """
         if language in self.ui_texts:
             self.ui_texts[language].update(texts)
         else:
