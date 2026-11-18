@@ -1,0 +1,7 @@
+[Desktop Entry]
+Name=Stardew Valley Mod Translator
+Comment=Translate Stardew Valley MOD files
+Exec=stardew-ai-auto-translator %U
+Type=Application
+Categories=Utility;
+Terminal=false

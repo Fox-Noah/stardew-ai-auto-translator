@@ -7,6 +7,7 @@ import sys
 import os
 from typing import Callable, Optional, Dict, Any
 from .modern_widgets import ModernButton, ModernFrame, ModernEntry, ModernLabel, apply_modern_style_to_widget, style_manager
+from .provider_dialog import show_provider_dialog
 
 class GUIManager:
     """GUI界面管理类"""
@@ -251,6 +252,7 @@ class GUIManager:
         language_combo.pack(side=tk.LEFT, padx=(0, 12))
         language_combo.bind('<<ComboboxSelected>>', self.parent.on_language_change)
         language_combo.bind('<MouseWheel>', self.on_combobox_mousewheel)
+        self.parent.language_combo = language_combo
         # 添加到下拉菜单列表中
         self.comboboxes.append(language_combo)
         
@@ -260,7 +262,7 @@ class GUIManager:
                                              style="label")
         self.parent.model_label.pack(side=tk.LEFT, padx=(0, 8))
         self.parent.model_combo = ttk.Combobox(config_content, textvariable=self.parent.ollama_model_var,
-                                       state="readonly", width=20, font=style_manager.get_font('default'))
+                                       state="normal", width=20, font=style_manager.get_font('default'))
         self.parent.model_combo.pack(side=tk.LEFT, padx=(0, 12))
         self.parent.model_combo.bind('<MouseWheel>', self.on_combobox_mousewheel)
         # 添加到下拉菜单列表中
@@ -279,6 +281,9 @@ class GUIManager:
                                                command=self.show_settings_dialog,
                                                style="primary")
         self.parent.settings_btn.pack(side=tk.LEFT)
+        self.parent.provider_settings_btn = ModernButton(
+            config_content, text='供应商 / 术语', command=lambda: show_provider_dialog(self.parent), style='secondary')
+        self.parent.provider_settings_btn.pack(side=tk.LEFT, padx=(8, 0))
         
         # 功能按钮区域 - 使用现代化框架
         self.parent.buttons_frame = ModernFrame(main_frame, text=self.parent.get_ui_text("functions"), 
@@ -291,6 +296,9 @@ class GUIManager:
         
         # 按钮样式配置
         button_padx = 8
+        self.parent.select_directory_btn = ModernButton(
+            buttons_content, text='选择 MOD 目录', command=self.parent.file_manager.select_mod_directory, style='primary')
+        self.parent.select_directory_btn.pack(side=tk.LEFT, padx=(0, button_padx), fill=tk.X, expand=True)
         
         # 导入 MOD 按钮
         self.parent.import_btn = ModernButton(buttons_content, 
@@ -376,6 +384,9 @@ class GUIManager:
                                                        command=self.parent.save_translation_files,
                                                        style="success")
         self.parent.save_translation_btn.pack(side=tk.LEFT)
+        self.parent.restore_backup_btn = ModernButton(
+            mod_row1, text='恢复备份', command=self.parent.file_manager.restore_translation_backup, style='secondary')
+        self.parent.restore_backup_btn.pack(side=tk.LEFT, padx=(8, 0))
         
         # 第二行容器：文件选择
         mod_row2 = ModernFrame(mod_selection_frame, style="default")
@@ -879,6 +890,8 @@ class GUIManager:
     
     def edit_translation_dialog(self, index, original_text, current_translation):
         """显示翻译编辑对话框"""
+        if self.parent.translation_manager.is_translating:
+            return
         # 创建自定义对话框，但先不显示
         dialog = tk.Toplevel(self.root)
         dialog.title(self.parent.get_ui_text("edit_translation_dialog"))
@@ -984,6 +997,8 @@ class GUIManager:
                     key = self.parent.current_translation_keys[index]
                     if hasattr(self.parent, 'current_translation_data'):
                         self.parent.current_translation_data[key] = new_text
+                    if hasattr(self.parent, 'current_document'):
+                        self.parent.current_document.completed_paths.add(key)
                 
                 self.parent.log_message(self.parent.get_ui_text("translation_updated"))
                 dialog.destroy()
@@ -1142,6 +1157,7 @@ class GUIManager:
             save_content.pack(fill=tk.X, padx=5, pady=5)
             
             ModernLabel(save_content, text=self.parent.get_ui_text("auto_save_interval_label")).pack(anchor=tk.W)
+            ModernLabel(save_content, text='翻译中仅更新预览；全部校验通过后才写入 MOD。').pack(anchor=tk.W)
             
             save_input_frame = ModernFrame(save_content, style="default")
             save_input_frame.pack(fill=tk.X, pady=(5, 0))

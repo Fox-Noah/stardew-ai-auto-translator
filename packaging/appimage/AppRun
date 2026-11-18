@@ -1,0 +1,8 @@
+#!/bin/sh
+set -eu
+
+APPDIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+DATA_HOME=${XDG_DATA_HOME:-${HOME}/.local/share}
+export STARDEW_TRANSLATOR_DATA_DIR=${STARDEW_TRANSLATOR_DATA_DIR:-"${DATA_HOME}/stardew-ai-auto-translator"}
+
+exec "${APPDIR}/usr/bin/stardew-ai-auto-translator" "$@"

@@ -6,16 +6,81 @@
 """
 
 import re
+import uuid
+from collections import Counter
 from typing import Dict, List, Optional, Tuple
 
 
 class TranslationCore:
     """翻译核心处理类"""
     
-    def __init__(self):
+    def __init__(self, glossary=None):
         """初始化翻译核心"""
         self.placeholder_pattern = re.compile(r'{{[^}]+}}')
         self.special_chars = ['[', ']', '{', '}', '{{', '}}']
+        self.glossary = {} if glossary is None else glossary
+        if not isinstance(self.glossary, dict) or any(
+            not isinstance(source, str) or not source.strip()
+            or not isinstance(target, str) or not target.strip()
+            for source, target in self.glossary.items()
+        ):
+            raise ValueError('术语必须是非空的“原词 → 指定译法”字典')
+        self.control_pattern = re.compile(
+            r'\{\{[^{}]*\}\}|\{[^{}]*\}|\[[^\]\r\n]*\]|https?://[^\s]+|'
+            r'%item\b[^\r\n]*?%%|%(?:\d+\$)?[sdif]|%[A-Za-z_][A-Za-z0-9_]*|'
+            r'#\$[qrcedy][^#\r\n]*#|\$[A-Za-z0-9_]+(?:[ \t]+\d+(?:[./]\d+)*)*|[#^@|~%]|\r\n|\r|\n'
+        )
+        for source, target in self.glossary.items():
+            if self.control_pattern.search(source) or self.control_pattern.search(target):
+                raise ValueError('术语不能包含占位符或游戏控制符')
+        patterns = []
+        for source in sorted(self.glossary, key=len, reverse=True):
+            left = r'(?<!\w)' if re.match(r'\w', source[0]) else ''
+            right = r'(?!\w)' if re.match(r'\w', source[-1]) else ''
+            patterns.append(left + re.escape(source) + right)
+        self.term_pattern = re.compile('|'.join(patterns)) if patterns else None
+
+    def protect_text(self, text):
+        """先保护游戏语法，再以最长匹配保护术语。"""
+        prefix = '__SDV_' + uuid.uuid4().hex + '_'
+        replacements = {}
+
+        def protect(value):
+            marker = f'{prefix}{len(replacements)}__'
+            replacements[marker] = value
+            return marker
+
+        parts = []
+        offset = 0
+        for match in self.control_pattern.finditer(text):
+            plain = text[offset:match.start()]
+            if self.term_pattern:
+                plain = self.term_pattern.sub(lambda term: protect(self.glossary[term.group()]), plain)
+            parts.extend((plain, protect(match.group())))
+            offset = match.end()
+        plain = text[offset:]
+        if self.term_pattern:
+            plain = self.term_pattern.sub(lambda term: protect(self.glossary[term.group()]), plain)
+        parts.append(plain)
+        return ''.join(parts), replacements
+
+    def finish_translation(self, original, translated, replacements):
+        """标记缺失、重复或移动均拒绝，不让失败译文进入正式文件。"""
+        if any(translated.count(marker) != 1 for marker in replacements):
+            raise ValueError('翻译丢失或重复了受保护标记')
+        if replacements:
+            pattern = re.compile('|'.join(map(re.escape, replacements)))
+            if pattern.findall(translated) != list(replacements):
+                raise ValueError('翻译改变了受保护标记的顺序')
+            translated = pattern.sub(lambda match: replacements[match.group()], translated)
+        if '__SDV_' in translated and '__SDV_' not in original:
+            raise ValueError('翻译包含无法识别的临时标记')
+        if not self.validate_translation(original, translated):
+            raise ValueError('翻译未通过占位符、控制符或指定译法校验')
+        return translated
+
+    def _plain_text(self, text):
+        return self.control_pattern.sub(' ', text)
         
     def extract_placeholders(self, text: str) -> List[str]:
         """提取文本中的占位符
@@ -131,15 +196,20 @@ class TranslationCore:
             return False
             
         # 检查占位符是否保持一致
-        original_placeholders = set(self.extract_placeholders(original))
-        translation_placeholders = set(self.extract_placeholders(translation))
+        original_placeholders = self.control_pattern.findall(original)
+        translation_placeholders = self.control_pattern.findall(translation)
         
         if original_placeholders != translation_placeholders:
             return False
             
-        # 检查翻译是否与原文相同（可能未翻译）
-        if original.strip() == translation.strip():
-            return False
+        # 指定译法按最长项计数，避免长译名掩盖短译名缺失
+        if self.term_pattern:
+            required = Counter(self.glossary[match.group()] for match in self.term_pattern.finditer(self._plain_text(original)))
+            plain_translation = self._plain_text(translation)
+            targets = re.compile('|'.join(map(re.escape, sorted(set(self.glossary.values()), key=len, reverse=True))))
+            actual = Counter(targets.findall(plain_translation))
+            if any(actual[target] < count for target, count in required.items()):
+                return False
             
         return True
     
