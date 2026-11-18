@@ -29,6 +29,7 @@ from modules.file_manager import FileManager
 from modules.translation_core import TranslationCore
 from modules.ui_text_manager import UITextManager
 from modules.modern_widgets import style_manager
+from modules.translation_service import TranslationService, DEFAULT_PROVIDER, ollama_server_url
 
 
 
@@ -164,7 +165,7 @@ class StardewValleyTranslator:
         
         # GUI变量
         self.target_language_var = tk.StringVar(value=self.current_ui_language)
-        self.ollama_model_var = tk.StringVar(value="")
+        self.ollama_model_var = tk.StringVar(value=self.get_selected_provider().get('model', '') or self.ollama_model or '')
         self.batch_size_var = tk.StringVar(value=str(self.batch_size))
         self.auto_save_interval_var = tk.StringVar(value=str(self.auto_save_interval))
         
@@ -220,13 +221,33 @@ class StardewValleyTranslator:
             'batch_size': getattr(self, 'batch_size', 5),
             'auto_save_interval': getattr(self, 'auto_save_interval', 20)
         }
-        for key, value in config.items():
-            self.config_manager.set(key, value)
+        self.config_manager.update(config, auto_save=False)
         self.config_manager.save_config()
+
+    def get_selected_provider(self):
+        """返回当前供应商的独立副本。"""
+        providers = self.config_manager.get('providers', [DEFAULT_PROVIDER.copy()])
+        selected = self.config_manager.get('selected_provider', DEFAULT_PROVIDER['name'])
+        for provider in providers:
+            if provider.get('name') == selected:
+                return dict(provider)
+        raise ValueError('当前供应商不存在，请打开供应商设置')
+
+    def create_translation_service(self):
+        provider = self.get_selected_provider()
+        provider['model'] = self.ollama_model_var.get().strip()
+        return TranslationService(provider, self.config_manager.get('translation_prompt', ''),
+                                  self.config_manager.get('glossary', {}))
     
     def create_gui(self):
         """创建图形界面"""
         self.gui_manager.create_gui()
+        for sequence in ('<Button-4>', '<Button-5>'):
+            for combo in self.gui_manager.comboboxes:
+                combo.bind(sequence, self.gui_manager.on_combobox_mousewheel)
+            self.original_listbox.bind(sequence, self.gui_manager.on_mouse_wheel)
+            self.translation_listbox.bind(sequence, self.gui_manager.on_mouse_wheel)
+            self.log_text.bind(sequence, self.gui_manager.on_log_mouse_wheel)
     
     def get_ui_text(self, key: str) -> str:
         """获取界面文本"""
@@ -241,6 +262,7 @@ class StardewValleyTranslator:
             self.ui_text_manager.set_language(selected_language)
             self.update_ui_texts()
             self.save_config()  # 保存语言设置
+            self.refresh_mod_list()
     
     def update_ui_texts(self):
         """更新界面文本"""
@@ -402,6 +424,15 @@ class StardewValleyTranslator:
     
     def refresh_models(self):
         """刷新模型列表"""
+        if self.translation_manager.is_translating:
+            return
+        provider = self.get_selected_provider()
+        if provider['protocol'] != 'ollama':
+            self.model_combo['values'] = [provider['model']]
+            self.ollama_model_var.set(provider['model'])
+            self.log_message('API 模型使用供应商设置中的名称，无需连接 Ollama')
+            return
+        self.ollama_manager.base_url = ollama_server_url(provider['base_url'])
         self.ollama_manager.refresh_models()
     
     # 文件处理方法已迁移到file_manager.py
@@ -447,6 +478,13 @@ class StardewValleyTranslator:
         """异步初始化，避免阻塞UI"""
         # 立即显示窗口，不等待任何初始化
         self._show_window_centered()
+        provider = self.get_selected_provider()
+        if provider['protocol'] != 'ollama':
+            self.model_combo['values'] = [provider['model']]
+            self.refresh_mod_list()
+            return
+        self.ollama_base_url = ollama_server_url(provider['base_url'])
+        self.ollama_manager.base_url = self.ollama_base_url
         
         def initialize():
             try:
@@ -462,7 +500,7 @@ class StardewValleyTranslator:
                 # 然后检查Ollama服务状态
                 if self.ollama_manager.check_server_status():
                     # 从配置文件读取保存的模型，如果没有则使用默认值
-                    saved_model = self.config_manager.get_ollama_model()
+                    saved_model = provider.get('model') or self.config_manager.get_ollama_model()
                     self.ollama_model = saved_model if saved_model else "qwen2.5-coder:14b"
                     
                     # 立即初始化翻译器，不等待模型列表
@@ -487,7 +525,7 @@ class StardewValleyTranslator:
                                     self.config_manager.set_ollama_model(self.ollama_model)
                                     self.ollama_translator.model = self.ollama_model
                                 # 更新UI
-                                self.root.after(0, self._update_models_ui, models)
+                                self.root.after(0, self._update_models_ui, models, provider['name'])
                                 self.root.after(0, self.log_message, self.get_ui_text("models_loaded").format(len(models)))
                             else:
                                 self.root.after(0, self.log_message, self.get_ui_text("no_available_models"), "WARNING")
@@ -505,8 +543,11 @@ class StardewValleyTranslator:
         # 在后台线程中执行初始化
         threading.Thread(target=initialize, daemon=True).start()
     
-    def _update_models_ui(self, models):
+    def _update_models_ui(self, models, expected_provider=None):
         """更新模型UI（在主线程中调用）"""
+        provider = self.get_selected_provider()
+        if provider['protocol'] != 'ollama' or (expected_provider is not None and provider['name'] != expected_provider):
+            return
         if hasattr(self, 'model_combo'):
             self.model_combo['values'] = models
             if models:

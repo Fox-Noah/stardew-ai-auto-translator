@@ -6,8 +6,11 @@
 """
 
 import json
+import copy
 from pathlib import Path
 from typing import Dict, Any, Optional
+from .mod_translation import JsonDocument, atomic_write, read_optional
+from .translation_service import DEFAULT_PROVIDER
 
 
 class ConfigManager:
@@ -21,13 +24,18 @@ class ConfigManager:
         """
         self.config_file = config_file_path
         self.config_data = {}
+        self.load_failed = False
         
         # 默认配置
         self.default_config = {
             'ui_language': '中文',
             'ollama_model': '',  # 不再硬编码，由程序自动获取
             'batch_size': 5,
-            'auto_save_interval': 20
+            'auto_save_interval': 20,
+            'providers': [DEFAULT_PROVIDER.copy()],
+            'selected_provider': DEFAULT_PROVIDER['name'],
+            'translation_prompt': '',
+            'glossary': {}
         }
         
         # 加载配置
@@ -40,28 +48,30 @@ class ConfigManager:
             配置数据字典
         """
         try:
+            self.load_failed = False
             if self.config_file.exists():
-                with open(self.config_file, 'r', encoding='utf-8') as f:
-                    self.config_data = json.load(f)
+                self.config_data = JsonDocument(self.config_file.read_bytes()).data
+                if not isinstance(self.config_data, dict):
+                    raise ValueError('配置必须是 JSON 对象')
                     
                 # 确保所有默认配置项都存在
                 for key, value in self.default_config.items():
                     if key not in self.config_data:
-                        self.config_data[key] = value
+                        self.config_data[key] = copy.deepcopy(value)
                         
-                # 如果有新增的默认配置项，保存配置
-                if len(self.config_data) != len(self.default_config):
-                    self.save_config()
+                # 兼容原有 Ollama 模型配置
+                if not self.config_data['providers'][0].get('model'):
+                    self.config_data['providers'][0]['model'] = self.config_data.get('ollama_model', '')
             else:
                 # 配置文件不存在，使用默认配置
-                self.config_data = self.default_config.copy()
+                self.config_data = copy.deepcopy(self.default_config)
                 self.save_config()
                 
         except Exception as e:
             print(f"加载配置文件失败: {e}")
             # 配置文件损坏时使用默认配置
-            self.config_data = self.default_config.copy()
-            self.save_config()
+            self.config_data = copy.deepcopy(self.default_config)
+            self.load_failed = True
             
         return self.config_data
     
@@ -72,11 +82,13 @@ class ConfigManager:
             保存是否成功
         """
         try:
+            if self.load_failed:
+                raise ValueError('原配置损坏，已保留原文件；请先修复或另行备份该文件')
             # 确保配置目录存在
             self.config_file.parent.mkdir(parents=True, exist_ok=True)
             
-            with open(self.config_file, 'w', encoding='utf-8') as f:
-                json.dump(self.config_data, f, ensure_ascii=False, indent=2)
+            raw = json.dumps(self.config_data, ensure_ascii=False, indent=2).encode('utf-8')
+            atomic_write(self.config_file, raw, read_optional(self.config_file), backup=False, mode=0o600)
             return True
             
         except Exception as e:
@@ -120,7 +132,7 @@ class ConfigManager:
     
     def reset_to_default(self) -> None:
         """重置为默认配置"""
-        self.config_data = self.default_config.copy()
+        self.config_data = copy.deepcopy(self.default_config)
         self.save_config()
     
     def get_ui_language(self) -> str:
@@ -157,7 +169,7 @@ class ConfigManager:
     
     def get_all_config(self) -> Dict[str, Any]:
         """获取所有配置"""
-        return self.config_data.copy()
+        return copy.deepcopy(self.config_data)
     
     def is_valid_config(self) -> bool:
         """检查配置是否有效"""

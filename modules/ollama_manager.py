@@ -59,6 +59,7 @@ class OllamaManager:
     
     def refresh_models(self):
         """刷新模型列表"""
+        provider_name = self.main_app.get_selected_provider()['name'] if self.main_app else None
         def refresh():
             try:
                 if self.main_app:
@@ -71,7 +72,7 @@ class OllamaManager:
                         # 更新available_models属性
                         self.main_app.available_models = models
                         # 通过主线程更新UI
-                        self.main_app.root.after(0, lambda: self.main_app._update_models_ui(models))
+                        self.main_app.root.after(0, self.main_app._update_models_ui, models, provider_name)
                         if models:
                             self.model = models[0]
                         self.main_app.log_message("模型列表刷新成功")

@@ -1,0 +1,15 @@
+.git/
+Data/
+__pycache__/
+*.pyc
+.venv/
+.checks/
+Mods/
+docs/
+.appimage/
+*.AppImage
+Dockerfile
+docker-compose.yml
+entrypoint.sh
+AGENT.md
+AGENTS.md
