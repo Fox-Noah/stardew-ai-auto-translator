@@ -1,13 +1,13 @@
 """按所选协议发送翻译请求；错误直接交给任务层，避免回写原文冒充成功。"""
 
-from concurrent.futures import ThreadPoolExecutor, as_completed
+import queue
 import re
 import threading
 from urllib.parse import urlsplit
 
 import requests
 
-from .translation_core import TranslationCore
+from .translation_core import NAMED_PLACEHOLDER, TranslationCore
 
 
 DEFAULT_PROVIDER = {
@@ -51,7 +51,7 @@ class TranslationService:
             base_url += '/v1'
         self.url = base_url if base_url.endswith(suffix) else base_url + suffix
 
-    def translate_single_text(self, text, target_lang):
+    def translate_single_text(self, text, target_lang, timeout=(10, 120)):
         masked, replacements = self.core.protect_text(text)
         plain = masked
         for marker in replacements:
@@ -61,9 +61,12 @@ class TranslationService:
         system = (
             f'将用户文本翻译成 {target_lang}，只返回译文，不加引号、解释或代码围栏。\n'
             f'用户风格要求：\n{self.prompt}\n'
-            '最高优先级：原样保留每一个 __SDV_ 开头的标记，次数与顺序不变。'
+            '最高优先级：原样保留每一个 __SDV_ 开头的标记，每个恰好出现一次，默认保持顺序。'
             '标记代表游戏语法或指定译法，任何风格要求均不得覆盖此约束。'
         )
+        movable = [marker for marker, token in replacements.items() if NAMED_PLACEHOLDER.fullmatch(token)]
+        if len(movable) > 1:
+            system += '\n仅以下命名占位符可按译文语序换位，不得跨越其他标记：' + ' '.join(movable)
         messages = [{'role': 'user', 'content': masked}]
         body = {'model': self.model, 'messages': messages, 'stream': False}
         headers = {'Content-Type': 'application/json'}
@@ -75,25 +78,30 @@ class TranslationService:
             if self.protocol == 'openai':
                 headers['Authorization'] = 'Bearer ' + self.api_key
         try:
-            response = requests.post(self.url, headers=headers, json=body, timeout=(10, 120), allow_redirects=False)
+            response = requests.post(self.url, headers=headers, json=body, timeout=timeout, allow_redirects=False)
+        except requests.Timeout:
+            raise RuntimeError('供应商请求超时，请检查网络或模型响应速度') from None
         except requests.RequestException:
-            raise RuntimeError('供应商请求失败，请检查网络、接口地址及超时设置') from None
+            raise RuntimeError('供应商请求失败，请检查网络和接口地址') from None
         if response.status_code != 200:
-            reason = {401: '认证失败', 403: '访问被拒绝', 429: '请求限流或额度不足'}.get(response.status_code, '供应商请求失败')
+            reason = {401: '认证失败', 403: '访问被拒绝', 404: '接口地址或模型不存在',
+                      429: '请求限流或额度不足'}.get(response.status_code, '供应商请求失败')
             raise RuntimeError(f'{reason}（HTTP {response.status_code}）')
         try:
             payload = response.json()
+            if payload.get('error') is not None or payload.get('type') == 'error':
+                raise RuntimeError('供应商返回错误，请检查接口地址、模型和账号状态')
             if self.protocol == 'anthropic':
-                if payload.get('stop_reason') != 'end_turn':
+                if payload.get('stop_reason') not in (None, 'end_turn', 'stop_sequence'):
                     raise ValueError('响应未完整结束')
                 translated = ''.join(block['text'] for block in payload['content'] if block.get('type') == 'text')
             elif self.protocol == 'openai':
                 choice = payload['choices'][0]
-                if choice.get('finish_reason') != 'stop':
+                if choice.get('finish_reason') not in (None, 'stop') or choice['message'].get('refusal'):
                     raise ValueError('响应未完整结束')
                 translated = choice['message']['content']
             else:
-                if payload.get('done') is not True or payload.get('done_reason') == 'length':
+                if payload.get('done', True) is not True or payload.get('done_reason') not in (None, 'stop'):
                     raise ValueError('响应未完整结束')
                 translated = payload['message']['content']
             if not isinstance(translated, str) or not translated.strip():
@@ -110,27 +118,49 @@ class TranslationService:
             return []
         aborted = threading.Event()
         results = [None] * len(texts)
+        pending = queue.Queue()
+        completed_results = queue.Queue()
+        for index, text in enumerate(texts):
+            pending.put((index, text))
 
-        def translate(text):
-            if aborted.is_set() or (stop_check and stop_check()):
-                raise RuntimeError('翻译已取消，未保存当前文件')
-            return self.translate_single_text(text, target_lang)
-
-        with ThreadPoolExecutor(max_workers=min(batch_size, len(texts))) as executor:
-            futures = {executor.submit(translate, text): index for index, text in enumerate(texts)}
-            try:
-                for completed, future in enumerate(as_completed(futures), 1):
+        def worker():
+            while not aborted.is_set():
+                try:
+                    index, text = pending.get_nowait()
+                except queue.Empty:
+                    return
+                try:
                     if stop_check and stop_check():
-                        raise RuntimeError('翻译已取消，未保存当前文件')
-                    index = futures[future]
-                    results[index] = future.result()
-                    if result_callback:
-                        result_callback(index, texts[index], results[index])
-                    if progress_callback:
-                        progress_callback(completed, len(texts), '')
-            except Exception:
-                aborted.set()
-                for future in futures:
-                    future.cancel()
-                raise
+                        return
+                    completed_results.put((index, self.translate_single_text(text, target_lang), None))
+                except Exception as error:
+                    completed_results.put((index, None, error))
+                finally:
+                    pending.task_done()
+
+        workers = [threading.Thread(target=worker, daemon=True)
+                   for _ in range(min(batch_size, len(texts)))]
+        for thread in workers:
+            thread.start()
+        completed = 0
+        try:
+            while completed < len(texts):
+                if stop_check and stop_check():
+                    raise RuntimeError('翻译已取消，未保存当前文件')
+                try:
+                    index, result, error = completed_results.get(timeout=0.05)
+                except queue.Empty:
+                    continue
+                if stop_check and stop_check():
+                    raise RuntimeError('翻译已取消，未保存当前文件')
+                if error is not None:
+                    raise error
+                results[index] = result
+                completed += 1
+                if result_callback:
+                    result_callback(index, texts[index], result)
+                if progress_callback:
+                    progress_callback(completed, len(texts), '')
+        finally:
+            aborted.set()
         return results

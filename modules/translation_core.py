@@ -11,6 +11,9 @@ from collections import Counter
 from typing import Dict, List, Optional, Tuple
 
 
+NAMED_PLACEHOLDER = re.compile(r'\{\{[A-Za-z_][A-Za-z0-9_]*\}\}(?:%(?![A-Za-z0-9_%]))?')
+
+
 class TranslationCore:
     """翻译核心处理类"""
     
@@ -26,6 +29,7 @@ class TranslationCore:
         ):
             raise ValueError('术语必须是非空的“原词 → 指定译法”字典')
         self.control_pattern = re.compile(
+            f'{NAMED_PLACEHOLDER.pattern}|'
             r'\{\{[^{}]*\}\}|\{[^{}]*\}|\[[^\]\r\n]*\]|https?://[^\s]+|'
             r'%item\b[^\r\n]*?%%|%(?:\d+\$)?[sdif]|%[A-Za-z_][A-Za-z0-9_]*|'
             r'#\$[qrcedy][^#\r\n]*#|\$[A-Za-z0-9_]+(?:[ \t]+\d+(?:[./]\d+)*)*|[#^@|~%]|\r\n|\r|\n'
@@ -64,13 +68,29 @@ class TranslationCore:
         parts.append(plain)
         return ''.join(parts), replacements
 
+    @staticmethod
+    def _token_order(tokens, replacements=None):
+        """只允许同一语段内的命名占位符换位。"""
+        replacements = replacements or {}
+        order = []
+        named = []
+        for token in tokens:
+            if NAMED_PLACEHOLDER.fullmatch(replacements.get(token, token)):
+                named.append(token)
+            else:
+                order.extend(sorted(named))
+                named.clear()
+                order.append(token)
+        return order + sorted(named)
+
     def finish_translation(self, original, translated, replacements):
-        """标记缺失、重复或移动均拒绝，不让失败译文进入正式文件。"""
+        """拒绝缺失、重复或非法换位的标记。"""
         if any(translated.count(marker) != 1 for marker in replacements):
             raise ValueError('翻译丢失或重复了受保护标记')
         if replacements:
             pattern = re.compile('|'.join(map(re.escape, replacements)))
-            if pattern.findall(translated) != list(replacements):
+            markers = pattern.findall(translated)
+            if self._token_order(markers, replacements) != self._token_order(replacements, replacements):
                 raise ValueError('翻译改变了受保护标记的顺序')
             translated = pattern.sub(lambda match: replacements[match.group()], translated)
         if '__SDV_' in translated and '__SDV_' not in original:
@@ -140,23 +160,11 @@ class TranslationCore:
         if not text or not text.strip():
             return False
             
-        # 跳过以特殊字符开头的文本
-        if text.strip().startswith(('[', '{')):
+        plain = self._plain_text(text).strip()
+        if not plain or not any(character.isalpha() for character in plain):
             return False
-            
-        # 跳过纯数字或特殊符号
-        if text.strip().isdigit() or text.strip() in ['', ' ', '\n', '\t']:
+        if re.search(r'(?i)(?:^|[\s/])assets/|\.(?:png|tmx|tbin|xnb|json)(?:$|\s)', plain):
             return False
-            
-        # 跳过只包含占位符的文本
-        placeholders = self.extract_placeholders(text)
-        text_without_placeholders = text
-        for placeholder in placeholders:
-            text_without_placeholders = text_without_placeholders.replace(placeholder, '')
-        
-        if not text_without_placeholders.strip():
-            return False
-            
         return True
     
     def clean_translation_text(self, text: str) -> str:
@@ -199,14 +207,26 @@ class TranslationCore:
         original_placeholders = self.control_pattern.findall(original)
         translation_placeholders = self.control_pattern.findall(translation)
         
-        if original_placeholders != translation_placeholders:
+        if self._token_order(original_placeholders) != self._token_order(translation_placeholders):
             return False
             
         # 指定译法按最长项计数，避免长译名掩盖短译名缺失
         if self.term_pattern:
             required = Counter(self.glossary[match.group()] for match in self.term_pattern.finditer(self._plain_text(original)))
             plain_translation = self._plain_text(translation)
-            targets = re.compile('|'.join(map(re.escape, sorted(set(self.glossary.values()), key=len, reverse=True))))
+            source_remainder = self.term_pattern.sub('', self._plain_text(original))
+            allow_embedded_cjk = any(character.isalpha() for character in source_remainder) or sum(required.values()) > 1
+            target_patterns = []
+            for target in sorted(set(self.glossary.values()), key=len, reverse=True):
+                cjk = r'[\u3400-\u9fff\u3040-\u30ff\uac00-\ud7af]'
+                left = r'(?<!\w)' if target[0].isascii() and target[0].isalnum() else ''
+                right = r'(?!\w)' if target[-1].isascii() and target[-1].isalnum() else ''
+                if not allow_embedded_cjk and re.match(cjk, target[0]):
+                    left = rf'(?<!{cjk})'
+                if not allow_embedded_cjk and re.match(cjk, target[-1]):
+                    right = rf'(?!{cjk})'
+                target_patterns.append(left + re.escape(target) + right)
+            targets = re.compile('|'.join(target_patterns))
             actual = Counter(targets.findall(plain_translation))
             if any(actual[target] < count for target, count in required.items()):
                 return False

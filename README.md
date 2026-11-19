@@ -32,8 +32,9 @@ chmod +x ./stardew-ai-auto-translator-x86_64.AppImage
 1. 点击“供应商 / 术语”，选择协议，填写接口地址和模型名称，再点击“保存全部设置”。
    - **本地 Ollama**：先安装并启动 [Ollama](https://ollama.com/)，例如用 `ollama pull qwen2.5:7b` 下载模型。协议选 `ollama`，默认地址为 `http://localhost:11434`，模型填 `qwen2.5:7b`，密钥留空。
    - **在线 API**：按服务商文档选 `openai`（Chat Completions）或 `anthropic`（Messages），填写地址、模型和 API 密钥，无需安装 Ollama。地址可填根地址、带 `/v1` 的地址或完整端点；请只使用可信服务。在线翻译会向服务商发送待译文本，可能产生费用。
-2. 选目标语言，点击“选择 MOD 目录”，可选择单个 MOD 或包含多个 MOD 的目录。初次使用建议选副本。也可以依次导入并解压 MOD 压缩包，再点“提取 i18n”。
-3. 选中 MOD 和起始文件，点击“自动翻译”。工具从当前文件开始处理该 MOD 的剩余文件；切换 MOD 后可处理下一组。直接选目录时不需要重新打包。
+   - 保存前可点“测试 API 连通性”，用当前表单发一条短翻译请求，可能计费。
+2. 选目标语言，点击“选择 MOD 目录”，可选择单个 MOD 或包含多个 MOD 的目录。深层路径可以粘贴后点“前往”。初次使用建议选副本。也可以依次导入并解压 MOD 压缩包，再点“提取 i18n”。
+3. 双击表格行切换到对应 MOD。点“翻译选中”处理表格选中的 MOD，或点“翻译全部”处理所有待翻译的 i18n 文件。原位翻译 `content.json` 需要选中 MOD 并确认；“翻译全部”会跳过。
 
 ## 翻译范围与保存
 
@@ -49,11 +50,41 @@ chmod +x ./stardew-ai-auto-translator-x86_64.AppImage
 
 选中文件后点“恢复备份”，选择同目录对应备份；恢复前仍会备份当前内容。手工编辑后点“保存翻译”，同样经过校验；未完成的预览不能直接覆盖正式文件。`content.json` 的注释、BOM 和非文本内容保留；已有 i18n 文件结构不变时也保留格式，新增键时重新排版。
 
-停止翻译不会中断已发出的 HTTP 请求，但不会保存当前文件；API 服务仍可能计费。
+“停止翻译”立即恢复操作，可直接启动新任务。已发出的 HTTP 请求可能继续运行和计费；迟到结果会丢弃，不覆盖未完成的文件，已完成的写入保留。
 
 ## 从源码运行与构建
 
 以下以 **Ubuntu 22.04、x86_64** 为例。仅从源码运行不需要 PyInstaller、`appimagetool` 或 Docker。AppImage 是 Linux 本机打包，不是 Windows 交叉构建。使用 Ubuntu 22.04 作为打包基线，不保证产物兼容更旧的系统或不同 CPU 架构。
+
+### 使用 Docker 构建环境
+
+仓库根目录的 `Dockerfile` 和 `docker-compose.yml` 提供 Ubuntu 22.04 AppImage 构建环境。项目目录运行时挂载到容器的 `/workspace`；`.dockerignore` 只保留镜像构建所需文件，因此不会影响容器内的项目文件。
+
+首次构建或需要强制重建时，命令保持不变：
+
+```bash
+UID=$(id -u) GID=$(id -g) docker compose build --no-cache
+```
+
+构建缓存挂载保存在当前 Docker BuildKit builder，不写入最终镜像。查看缓存占用：
+
+```bash
+docker buildx du
+```
+
+只清理 APT 和 Pip 使用的 BuildKit 缓存挂载：
+
+```bash
+docker buildx prune --force --filter "type=exec.cachemount"
+```
+
+该命令会清理当前 builder 中所有 `exec.cachemount`，不只清理本项目。需要清理当前 builder 的全部构建缓存时：
+
+```bash
+docker buildx prune --all --force
+```
+
+清理后再次执行构建会重新下载 APT 和 Pip 依赖；镜像构建逻辑、容器启动命令、UID/GID 和运行时挂载不变。
 
 ### 1. 准备源码和 Python 环境
 

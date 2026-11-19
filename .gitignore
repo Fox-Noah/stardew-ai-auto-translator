@@ -13,3 +13,4 @@ docker-compose.yml
 entrypoint.sh
 AGENT.md
 AGENTS.md
+.dockerignore

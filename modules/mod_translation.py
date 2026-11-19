@@ -164,6 +164,155 @@ class TranslationTask:
     root: Path
 
 
+@dataclass
+class ModFileStatus:
+    path: Path
+    task: TranslationTask = None
+    status: str = '扫描失败'
+    completed: int = 0
+    total: int = 0
+    detail: str = ''
+
+
+@dataclass
+class ModStatus:
+    path: Path
+    name: str
+    files: list
+    status: str
+    completed: int = 0
+    total: int = 0
+    detail: str = ''
+
+    @property
+    def tasks(self):
+        return [item.task for item in self.files if item.task is not None]
+
+
+def _status_from_counts(completed, total):
+    if total == 0:
+        return '无需翻译'
+    if completed == total:
+        return '已完成'
+    if completed:
+        return '部分翻译'
+    return '未翻译'
+
+
+def _relative_mod_path(root, path):
+    try:
+        relative = path.relative_to(root)
+    except ValueError:
+        return path.name
+    return str(relative) if str(relative) != '.' else path.name
+
+
+def scan_mods(root, language_code='zh', core=None):
+    """从磁盘扫描 MOD，并按当前目标语言计算可恢复状态。"""
+    from .translation_core import TranslationCore
+
+    root = Path(root).resolve()
+    core = core or TranslationCore()
+    try:
+        files = [path for path in root.rglob('*') if path.is_file() and not path.is_symlink()
+                 and not any(parent.is_symlink() for parent in path.parents)]
+    except OSError as error:
+        return [ModStatus(root, root.name, [], '扫描失败', detail=str(error))]
+    manifests = {path.parent for path in files if path.name.casefold() == 'manifest.json'}
+
+    def manifest_owner(path):
+        return next((parent for parent in path.parents if parent in manifests), None)
+
+    def fallback_owner(path):
+        relative = path.relative_to(root)
+        return root if len(relative.parts) <= 1 else root / relative.parts[0]
+
+    def owner(path):
+        return manifest_owner(path) or fallback_owner(path)
+
+    i18n_folders = {path for path in root.rglob('*')
+                    if path.is_dir() and not path.is_symlink()
+                    and not any(parent.is_symlink() for parent in path.parents)
+                    and path.name.casefold() == 'i18n'}
+    candidates = set(manifests)
+    candidates.update(owner(folder) for folder in i18n_folders)
+    candidates.update(owner(path) for path in files if path.name.casefold() == 'content.json')
+    candidates = {path for path in candidates if path == root or root in path.parents}
+    manifest_files = {path.parent: path for path in files if path.name.casefold() == 'manifest.json'}
+    results = []
+
+    for mod_path in sorted(candidates):
+        file_statuses = []
+        errors = []
+        manifest = manifest_files.get(mod_path)
+        name = _relative_mod_path(root, mod_path)
+        if manifest:
+            try:
+                manifest_data = JsonDocument(manifest.read_bytes()).data
+                if isinstance(manifest_data, dict) and isinstance(manifest_data.get('Name'), str):
+                    name = manifest_data['Name'].strip() or name
+            except Exception as error:
+                errors.append(f'{manifest}: {error}')
+
+        mod_i18n = sorted(folder for folder in i18n_folders if owner(folder) == mod_path)
+        has_i18n = bool(mod_i18n)
+        for folder in mod_i18n:
+            try:
+                siblings = [path for path in files if path.parent == folder]
+                children = {path.name.casefold(): path for path in siblings}
+                if len(children) != len(siblings):
+                    raise ValueError('i18n 存在仅大小写不同的重名文件')
+                source = children.get('default.json') or children.get('en.json')
+                if source is None:
+                    file_statuses.append(ModFileStatus(folder, status='待确认',
+                                                       detail='i18n 缺少 default.json 或 en.json'))
+                    continue
+                target = children.get(f'{language_code}.json') or folder / f'{language_code}.json'
+                if source == target:
+                    file_statuses.append(ModFileStatus(source, status='无需翻译', detail='源文件就是目标语言'))
+                    continue
+                task = TranslationTask(source, target, 'i18n', mod_path)
+                document = TranslationFile(task)
+                translatable = {path: value for path, value in document.entries.items()
+                                if core.is_translatable_text(value)}
+                reusable = document.reusable(core)
+                completed = len(set(reusable) & set(translatable))
+                file_statuses.append(ModFileStatus(target, task, _status_from_counts(completed, len(translatable)),
+                                                   completed, len(translatable)))
+            except Exception as error:
+                errors.append(f'{folder}: {error}')
+                file_statuses.append(ModFileStatus(folder, status='扫描失败', detail=str(error)))
+
+        if not has_i18n:
+            content_paths = sorted(path for path in files if path.name.casefold() == 'content.json'
+                                   and owner(path) == mod_path)
+            for path in content_paths:
+                try:
+                    task = TranslationTask(path, path, 'content', mod_path)
+                    document = TranslationFile(task)
+                    translatable = document.translatable_entries(core)
+                    status = '待确认' if translatable else '无需翻译'
+                    detail = '原位写回前需要逐个确认' if translatable else '没有可安全翻译的文本'
+                    file_statuses.append(ModFileStatus(path, task, status, 0, len(translatable), detail))
+                except Exception as error:
+                    errors.append(f'{path}: {error}')
+                    file_statuses.append(ModFileStatus(path, status='扫描失败', detail=str(error)))
+
+        total = sum(item.total for item in file_statuses)
+        completed = sum(item.completed for item in file_statuses)
+        if errors or any(item.status == '扫描失败' for item in file_statuses):
+            status = '扫描失败'
+        elif any(item.status == '待确认' for item in file_statuses):
+            status = '待确认'
+        elif all(item.status == '无需翻译' for item in file_statuses):
+            status = '无需翻译'
+        else:
+            status = _status_from_counts(completed, total)
+        results.append(ModStatus(mod_path, name, file_statuses, status, completed, total,
+                                 '; '.join(errors)))
+    return results
+
+
 def discover_tasks(root, language_code='zh'):
     root = Path(root).resolve()
     files = [path for path in root.rglob('*') if path.is_file() and not path.is_symlink()
@@ -248,12 +397,18 @@ class TranslationFile:
                 if isinstance(self.target_data.get(path[0]), str) and self.target_data[path[0]] != original
                 and core.validate_translation(original, self.target_data[path[0]])}
 
+    def translatable_entries(self, core):
+        return {path: value for path, value in self.entries.items()
+                if core.is_translatable_text(value)}
+
     def save(self, translations, core, stop_check=None):
         if translations.keys() != self.entries.keys():
             raise ValueError('译文不完整，未保存当前文件')
+        translatable = self.translatable_entries(core)
         for path, original in self.entries.items():
             translated = translations[path]
-            if not isinstance(translated, str) or (original.strip() and not core.validate_translation(original, translated)):
+            if not isinstance(translated, str) or (
+                    path in translatable and original.strip() and not core.validate_translation(original, translated)):
                 raise ValueError(f'译文校验失败：{path}')
         def check_source():
             if has_symlink(self.task.source) or self.task.source.read_bytes() != self.source_bytes:
@@ -289,3 +444,27 @@ class TranslationFile:
             self.source_bytes = raw
             self.document = JsonDocument(raw)
         return self.task.target
+
+    def save_original(self, translations, core, stop_check=None):
+        """确认后原位保存 content.json，并保留历史备份。"""
+        if self.task.kind != 'content' or self.task.source != self.task.target:
+            raise ValueError('只有 content.json 支持原位保存')
+        if translations.keys() != self.entries.keys():
+            raise ValueError('译文不完整，未保存当前文件')
+        translatable = self.translatable_entries(core)
+        for path, original in self.entries.items():
+            translated = translations[path]
+            if not isinstance(translated, str) or (
+                    path in translatable and original.strip() and not core.validate_translation(original, translated)):
+                raise ValueError(f'译文校验失败：{path}')
+        if has_symlink(self.task.source) or self.task.source.read_bytes() != self.source_bytes:
+            raise ValueError('原文已变动，请重新加载后保存')
+        if stop_check and stop_check():
+            raise RuntimeError('翻译已取消，未保存当前文件')
+        raw = self.document.replace_strings(translations)
+        if raw == self.source_bytes:
+            return self.task.source
+        atomic_write(self.task.source, raw, self.source_bytes, stop_check=stop_check)
+        self.source_bytes = raw
+        self.document = JsonDocument(raw)
+        return self.task.source

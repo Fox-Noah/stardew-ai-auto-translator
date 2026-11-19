@@ -6,9 +6,11 @@ import zipfile
 import subprocess
 import threading
 import re
+import tkinter as tk
 from pathlib import Path
 from tkinter import filedialog, messagebox
-from .mod_translation import TranslationFile, discover_tasks, atomic_write, read_optional
+from tkinter import ttk
+from .mod_translation import TranslationFile, discover_tasks, scan_mods, atomic_write, read_optional
 from .translation_core import TranslationCore
 
 class FileManager:
@@ -251,20 +253,11 @@ class FileManager:
         generation = self.scan_generation
         self.scanning = True
 
-        def scan_mods():
+        def scan_directory():
             """在后台线程中扫描MOD"""
             try:
-                available_mods = []
-                
-                groups = {}
-                for task in discover_tasks(root, language):
-                    groups.setdefault(task.root, []).append(task)
-                for mod_path, tasks in sorted(groups.items()):
-                    available_mods.append({
-                        'name': str(mod_path.relative_to(root)) if root in mod_path.parents else mod_path.name,
-                        'path': mod_path, 'tasks': tasks
-                    })
-                
+                glossary = self.app.config_manager.get('glossary', {})
+                available_mods = scan_mods(root, language, TranslationCore(glossary))
                 # 在主线程中更新UI
                 self.app.root.after(0, self._update_mod_list_ui, available_mods, generation)
                 
@@ -273,7 +266,7 @@ class FileManager:
                 self.app.root.after(0, self._update_mod_list_ui, [], generation)
         
         # 在后台线程中执行扫描
-        threading.Thread(target=scan_mods, daemon=True).start()
+        threading.Thread(target=scan_directory, daemon=True).start()
     
     def _update_mod_list_ui(self, available_mods, generation):
         """在主线程中更新MOD列表UI"""
@@ -287,11 +280,13 @@ class FileManager:
             self.app.current_document = None
             
             # 更新下拉框
-            mod_names = [mod['name'] for mod in self.available_mods]
+            mod_names = [mod.name for mod in self.available_mods]
             self.app.gui_manager.parent.mod_combo['values'] = mod_names
+            if hasattr(self.app, 'workbench'):
+                self.app.workbench.refresh_mods(self.available_mods)
             
             if mod_names:
-                self.app.gui_manager.parent.mod_combo.set(mod_names[0])
+                self.app.gui_manager.parent.mod_combo.current(0)
                 self.app.log_message(self.app.ui_text_manager.get_text("found_mods").format(len(mod_names), ', '.join(mod_names)))
                 # 在后台线程中加载MOD数据
                 self.on_mod_change()
@@ -315,34 +310,24 @@ class FileManager:
     def _load_mod_data_async(self):
         """切换已扫描的 MOD，文件读取另交后台线程。"""
         try:
-            selected_mod_name = self.app.gui_manager.parent.mod_combo.get()
-            if not selected_mod_name:
-                # 没有选择mod时清空界面
-                self.app.root.after(0, self._clear_file_ui)
+            index = self.app.gui_manager.parent.mod_combo.current()
+            self.selection_generation += 1
+            self.app.current_document = None
+            if not 0 <= index < len(self.available_mods):
+                self._clear_file_ui()
                 return
-                
-            # 查找对应的MOD信息
-            selected_mod = None
-            for mod in self.available_mods:
-                if mod['name'] == selected_mod_name:
-                    selected_mod = mod
-                    break
-            
-            if selected_mod:
-                # 设置当前MOD路径
-                self.app.current_mod_path = selected_mod['path']
-                self.app.current_mod_tasks = selected_mod['tasks']
-                self.app.root.after(0, self.app.log_message, self.app.ui_text_manager.get_text("switch_to_mod").format(selected_mod['name']))
-                
-                # 在后台加载文件列表和对比数据
-                self._load_file_list_async()
-            else:
-                # 找不到对应mod时清空界面
-                self.app.root.after(0, self._clear_file_ui)
+            selected_mod = self.available_mods[index]
+            # 设置当前MOD路径
+            self.app.current_mod_path = selected_mod.path
+            self.app.current_mod_tasks = selected_mod.tasks
+            self.app.log_message(self.app.ui_text_manager.get_text("switch_to_mod").format(selected_mod.name))
+
+            # 在后台加载文件列表和对比数据
+            self._load_file_list_async()
         except Exception as e:
             # 加载失败时清空界面
-            self.app.root.after(0, self._clear_file_ui)
-            self.app.root.after(0, self.app.log_message, f"MOD数据加载失败: {str(e)}", "ERROR")
+            self._clear_file_ui()
+            self.app.log_message(f"MOD数据加载失败: {str(e)}", "ERROR")
     
     def on_mod_change(self, event=None):
         """MOD选择改变事件"""
@@ -378,10 +363,7 @@ class FileManager:
                 self.on_file_change()
             else:
                 # 没有文件时清空文本显示区域
-                if hasattr(self.app, 'original_listbox'):
-                    self.app.original_listbox.delete(0, 'end')
-                if hasattr(self.app, 'translation_listbox'):
-                    self.app.translation_listbox.delete(0, 'end')
+                self._clear_file_ui()
         except Exception as e:
             self.app.log_message(self.app.get_ui_text("refresh_file_list_failed").format(str(e)), "ERROR")
     
@@ -480,11 +462,99 @@ class FileManager:
         if self.app.translation_manager.is_translating:
             self.app.log_message('请先停止当前翻译，再选择目录', 'WARNING')
             return
-        selected = filedialog.askdirectory(title='选择 MOD 或 Mods 目录', parent=self.app.root)
+        selected = self._select_directory()
         if selected:
             self.mod_root = Path(selected).resolve()
             self.app.log_message(f'直接处理目录：{self.mod_root}')
             self.refresh_mod_list()
+
+    def _select_directory(self):
+        """显示可调整大小的目录选择器，便于浏览深层目录。"""
+        dialog = tk.Toplevel(self.app.root)
+        dialog.title('选择 MOD 或 Mods 目录')
+        width = min(1100, dialog.winfo_screenwidth() - 64)
+        height = min(750, dialog.winfo_screenheight() - 80)
+        dialog.geometry(f'{width}x{height}')
+        dialog.minsize(min(800, width), min(520, height))
+        dialog.transient(self.app.root)
+        dialog.columnconfigure(0, weight=1)
+        dialog.rowconfigure(1, weight=1)
+
+        initial = self.mod_root if self.mod_root.exists() else Path.home()
+        current = [initial.resolve()]
+        result = [None]
+        path_var = tk.StringVar(value=str(current[0]))
+        directories = []
+
+        path_frame = ttk.Frame(dialog, padding=(12, 12, 12, 6))
+        path_frame.grid(row=0, column=0, sticky='ew')
+        path_frame.columnconfigure(0, weight=1)
+        path_entry = ttk.Entry(path_frame, textvariable=path_var)
+        path_entry.grid(row=0, column=0, sticky='ew', padx=(0, 8))
+
+        list_frame = ttk.Frame(dialog, padding=(12, 0, 12, 6))
+        list_frame.grid(row=1, column=0, sticky='nsew')
+        list_frame.columnconfigure(0, weight=1)
+        list_frame.rowconfigure(0, weight=1)
+        directory_list = tk.Listbox(list_frame, exportselection=False)
+        directory_list.grid(row=0, column=0, sticky='nsew')
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=directory_list.yview)
+        scrollbar.grid(row=0, column=1, sticky='ns')
+        horizontal = ttk.Scrollbar(list_frame, orient=tk.HORIZONTAL, command=directory_list.xview)
+        horizontal.grid(row=1, column=0, sticky='ew')
+        directory_list.configure(yscrollcommand=scrollbar.set, xscrollcommand=horizontal.set)
+
+        def show_directory(path):
+            path = Path(path).expanduser()
+            if not path.is_dir():
+                messagebox.showerror('目录不存在', f'无法打开目录：{path}', parent=dialog)
+                return
+            try:
+                entries = sorted((item for item in path.iterdir()
+                                  if item.is_dir() and not item.is_symlink()),
+                                 key=lambda item: item.name.casefold())
+            except OSError as error:
+                messagebox.showerror('目录不可读', str(error), parent=dialog)
+                return
+            current[0] = path.resolve()
+            directories[:] = entries
+            path_var.set(str(current[0]))
+            directory_list.delete(0, tk.END)
+            for entry in directories:
+                directory_list.insert(tk.END, entry.name)
+
+        def enter_selected(event=None):
+            selection = directory_list.curselection()
+            if selection:
+                show_directory(directories[selection[0]])
+
+        def go_to_path(event=None):
+            show_directory(path_var.get())
+
+        def go_up():
+            parent = current[0].parent
+            if parent != current[0]:
+                show_directory(parent)
+
+        def choose_current():
+            result[0] = str(current[0])
+            dialog.destroy()
+
+        directory_list.bind('<Double-1>', enter_selected)
+        path_entry.bind('<Return>', go_to_path)
+        ttk.Button(path_frame, text='前往', command=go_to_path).grid(row=0, column=1)
+        show_directory(current[0])
+
+        buttons = ttk.Frame(dialog, padding=(12, 0, 12, 12))
+        buttons.grid(row=2, column=0, sticky='ew')
+        ttk.Button(buttons, text='上一级', command=go_up).pack(side=tk.LEFT)
+        ttk.Button(buttons, text='进入', command=enter_selected).pack(side=tk.LEFT, padx=8)
+        ttk.Button(buttons, text='取消', command=dialog.destroy).pack(side=tk.RIGHT)
+        ttk.Button(buttons, text='选择当前目录', command=choose_current).pack(side=tk.RIGHT, padx=8)
+        dialog.protocol('WM_DELETE_WINDOW', dialog.destroy)
+        dialog.grab_set()
+        dialog.wait_window()
+        return result[0]
     
     def extract_mods(self):
         """解压 MOD 文件"""
@@ -752,7 +822,7 @@ class FileManager:
                     self.app.log_message('请先扫描 MOD 目录', 'WARNING')
                     return
                 for mod in mods:
-                    mod_dir = mod['path']
+                    mod_dir = mod.path
                     
                     self.app.log_message(self.app.get_ui_text("compressing_mod").format(mod_dir.name))
                     
@@ -862,6 +932,8 @@ class FileManager:
             self.app.current_translation_data = {}
             self.app.current_translation_keys = []
             self.app.current_translation_file = None
+            self.app.current_document = None
+            self.app.current_file_index = -1
             self.app.available_files = []
             
         except Exception as e:

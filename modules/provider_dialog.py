@@ -2,6 +2,8 @@
 
 import copy
 import json
+import queue
+import threading
 import tkinter as tk
 from tkinter import messagebox, ttk
 
@@ -38,6 +40,7 @@ def show_provider_dialog(app):
         entry.grid(row=row, column=1, sticky='ew')
     ttk.Label(provider_tab, text='API 地址可填协议根地址、/v1 或完整请求地址。\n'
               '密钥保存在本机 Data/config.json；请仅向可信地址发送请求。\n'
+              '连通性测试使用当前未保存字段发送一条短翻译请求，可能计费。\n'
               '点击“保存全部设置”后，当前供应商用于后续翻译。', wraplength=570).grid(row=7, columnspan=2, sticky='w', pady=15)
     loaded_name = [active.get()]
 
@@ -72,8 +75,44 @@ def show_provider_dialog(app):
         for name, variable in fields.items():
             variable.set('openai' if name == 'protocol' else '')
 
+    def test_connection():
+        provider = {name: variable.get().strip() for name, variable in fields.items()}
+        try:
+            service = TranslationService(provider, prompt.get('1.0', 'end-1c'))
+        except ValueError as error:
+            messagebox.showerror('连通性测试失败', str(error), parent=dialog)
+            return
+        test_button.config(state='disabled', text='测试中…')
+        results = queue.SimpleQueue()
+
+        def poll_test():
+            if not dialog.winfo_exists():
+                return
+            try:
+                success, detail = results.get_nowait()
+            except queue.Empty:
+                app.root.after(50, poll_test)
+                return
+            test_button.config(state='normal', text='测试 API 连通性')
+            if success:
+                messagebox.showinfo('连通性测试', f'API 调用成功，模型返回：\n{detail[:200]}', parent=dialog)
+            else:
+                messagebox.showerror('连通性测试失败', detail, parent=dialog)
+
+        def test():
+            try:
+                result = service.translate_single_text('Hello', 'Chinese', timeout=(5, 30))
+            except (ValueError, RuntimeError) as error:
+                results.put((False, str(error)))
+            except Exception:
+                results.put((False, '连通性测试失败，请检查供应商设置'))
+            else:
+                results.put((True, result))
+
+        threading.Thread(target=test, daemon=True).start()
+        app.root.after(50, poll_test)
+
     selector.bind('<<ComboboxSelected>>', select_profile)
-    ttk.Button(provider_tab, text='新增供应商', command=new_profile).grid(row=8, column=0, sticky='w')
 
     def keep_profile():
         try:
@@ -81,7 +120,12 @@ def show_provider_dialog(app):
         except ValueError as error:
             messagebox.showerror('设置无效', str(error), parent=dialog)
 
-    ttk.Button(provider_tab, text='暂存当前供应商', command=keep_profile).grid(row=8, column=1, sticky='w')
+    provider_buttons = ttk.Frame(provider_tab)
+    provider_buttons.grid(row=8, columnspan=2, sticky='w')
+    ttk.Button(provider_buttons, text='新增供应商', command=new_profile).pack(side=tk.LEFT)
+    ttk.Button(provider_buttons, text='暂存当前供应商', command=keep_profile).pack(side=tk.LEFT, padx=8)
+    test_button = ttk.Button(provider_buttons, text='测试 API 连通性', command=test_connection)
+    test_button.pack(side=tk.LEFT)
     prompt_tab = ttk.Frame(notebook, padding=12)
     notebook.add(prompt_tab, text='翻译提示词')
     ttk.Label(prompt_tab, text='指定译法与游戏标记约束优先于下列提示词。').pack(anchor='w')
