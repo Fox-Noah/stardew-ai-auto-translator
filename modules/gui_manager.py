@@ -7,6 +7,7 @@ import sys
 import os
 from typing import Callable, Optional, Dict, Any
 from .modern_widgets import ModernButton, ModernFrame, ModernEntry, ModernLabel, apply_modern_style_to_widget, style_manager
+from .provider_dialog import show_provider_dialog
 
 class GUIManager:
     """GUI界面管理类"""
@@ -26,6 +27,8 @@ class GUIManager:
         
         # 存储所有下拉菜单组件的引用
         self.comboboxes = []
+        self.mod_items = {}
+        self.parent.workbench = self
         
         # 绑定全局点击事件来处理下拉菜单取消选中
         self.root.bind('<Button-1>', self._on_global_click, add='+')
@@ -42,6 +45,8 @@ class GUIManager:
         """全局点击事件处理器，用于取消下拉菜单选中状态"""
         try:
             clicked_widget = event.widget
+            if clicked_widget == getattr(self.parent, 'mod_workbench', None):
+                return
             
             # 检查是否点击了翻译列表框，如果是则不处理
             if hasattr(self.parent, 'translation_listbox') and clicked_widget == self.parent.translation_listbox:
@@ -251,6 +256,7 @@ class GUIManager:
         language_combo.pack(side=tk.LEFT, padx=(0, 12))
         language_combo.bind('<<ComboboxSelected>>', self.parent.on_language_change)
         language_combo.bind('<MouseWheel>', self.on_combobox_mousewheel)
+        self.parent.language_combo = language_combo
         # 添加到下拉菜单列表中
         self.comboboxes.append(language_combo)
         
@@ -260,7 +266,7 @@ class GUIManager:
                                              style="label")
         self.parent.model_label.pack(side=tk.LEFT, padx=(0, 8))
         self.parent.model_combo = ttk.Combobox(config_content, textvariable=self.parent.ollama_model_var,
-                                       state="readonly", width=20, font=style_manager.get_font('default'))
+                                       state="normal", width=20, font=style_manager.get_font('default'))
         self.parent.model_combo.pack(side=tk.LEFT, padx=(0, 12))
         self.parent.model_combo.bind('<MouseWheel>', self.on_combobox_mousewheel)
         # 添加到下拉菜单列表中
@@ -279,6 +285,9 @@ class GUIManager:
                                                command=self.show_settings_dialog,
                                                style="primary")
         self.parent.settings_btn.pack(side=tk.LEFT)
+        self.parent.provider_settings_btn = ModernButton(
+            config_content, text='供应商 / 术语', command=lambda: show_provider_dialog(self.parent), style='secondary')
+        self.parent.provider_settings_btn.pack(side=tk.LEFT, padx=(8, 0))
         
         # 功能按钮区域 - 使用现代化框架
         self.parent.buttons_frame = ModernFrame(main_frame, text=self.parent.get_ui_text("functions"), 
@@ -291,6 +300,9 @@ class GUIManager:
         
         # 按钮样式配置
         button_padx = 8
+        self.parent.select_directory_btn = ModernButton(
+            buttons_content, text='选择 MOD 目录', command=self.parent.file_manager.select_mod_directory, style='primary')
+        self.parent.select_directory_btn.pack(side=tk.LEFT, padx=(0, button_padx), fill=tk.X, expand=True)
         
         # 导入 MOD 按钮
         self.parent.import_btn = ModernButton(buttons_content, 
@@ -369,6 +381,34 @@ class GUIManager:
                                                    command=self.parent.refresh_mod_list,
                                                    style="secondary")
         self.parent.refresh_mods_btn.pack(side=tk.LEFT, padx=(0, 8))
+
+        workbench_frame = ttk.Frame(mod_selection_frame)
+        workbench_frame.pack(fill=tk.X, pady=(0, 8))
+        self.parent.mod_workbench = ttk.Treeview(
+            workbench_frame, columns=('name', 'path', 'count', 'progress', 'status'),
+            show='headings', selectmode='extended', height=6)
+        workbench_scrollbar = ttk.Scrollbar(
+            workbench_frame, orient=tk.VERTICAL, command=self.parent.mod_workbench.yview)
+        self.parent.mod_workbench.configure(yscrollcommand=workbench_scrollbar.set)
+        self.parent.mod_workbench.bind('<Double-Button-1>', self._on_mod_workbench_double_click)
+        for column, title, width in (
+            ('name', 'MOD', 160), ('path', '路径', 260), ('count', '已完成/总数', 90),
+            ('progress', '进度', 70), ('status', '状态', 110)):
+            self.parent.mod_workbench.heading(column, text=title)
+            self.parent.mod_workbench.column(column, width=width, anchor=tk.W)
+        self.parent.mod_workbench.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        workbench_scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+        workbench_buttons = ModernFrame(mod_selection_frame, style="default")
+        workbench_buttons.pack(fill=tk.X, pady=(0, 6))
+        self.parent.translate_all_btn = ModernButton(
+            workbench_buttons, text='翻译全部',
+            command=lambda: self.parent.translation_manager.start_translation(all_mods=True), style='success')
+        self.parent.translate_all_btn.pack(side=tk.LEFT, padx=(0, 8))
+        self.parent.translate_selected_btn = ModernButton(
+            workbench_buttons, text='翻译选中',
+            command=lambda: self.parent.translation_manager.start_translation(all_mods=False), style='primary')
+        self.parent.translate_selected_btn.pack(side=tk.LEFT)
         
         # 保存翻译按钮
         self.parent.save_translation_btn = ModernButton(mod_row1, 
@@ -376,6 +416,9 @@ class GUIManager:
                                                        command=self.parent.save_translation_files,
                                                        style="success")
         self.parent.save_translation_btn.pack(side=tk.LEFT)
+        self.parent.restore_backup_btn = ModernButton(
+            mod_row1, text='恢复备份', command=self.parent.file_manager.restore_translation_backup, style='secondary')
+        self.parent.restore_backup_btn.pack(side=tk.LEFT, padx=(8, 0))
         
         # 第二行容器：文件选择
         mod_row2 = ModernFrame(mod_selection_frame, style="default")
@@ -485,7 +528,7 @@ class GUIManager:
         self.parent.translation_listbox.bind('<MouseWheel>', self.on_mouse_wheel)
         # 绑定双击编辑事件
         self.parent.translation_listbox.bind('<Double-Button-1>', self.on_translation_double_click)
-        
+
         # 配置网格权重
         self.parent.left_frame.columnconfigure(0, weight=1)
         self.parent.left_frame.rowconfigure(0, weight=1)
@@ -508,6 +551,7 @@ class GUIManager:
         if hasattr(self.parent, 'style_manager'):
             self.parent.style_manager.apply_theme_to_root(self.parent.root)
             self.parent.style_manager.update_widget_styles(self.parent)
+            ttk.Style().configure('Treeview', rowheight=30, font=style_manager.get_font('default'))
         
         # 版本标识 - 右下角显示
         self.parent.version_label = tk.Label(
@@ -522,6 +566,63 @@ class GUIManager:
         
         # 显示窗口
         self.parent._show_window_centered()
+
+    def refresh_mods(self, mods):
+        """刷新 MOD 工作台。"""
+        if not hasattr(self.parent, 'mod_workbench'):
+            return
+        self.parent.mod_workbench.delete(*self.parent.mod_workbench.get_children())
+        self.mod_items = {}
+        for index, mod in enumerate(mods):
+            item = str(index)
+            self.mod_items[item] = mod
+            progress = f'{mod.completed / mod.total:.0%}' if mod.total else '—'
+            self.parent.mod_workbench.insert('', tk.END, iid=item, values=(
+                mod.name, str(mod.path), f'{mod.completed}/{mod.total}', progress,
+                self._display_mod_status(mod)))
+
+    def selected_mods(self):
+        """返回工作台当前选中的 MOD。"""
+        if not hasattr(self.parent, 'mod_workbench'):
+            return []
+        return [self.mod_items[item] for item in self.parent.mod_workbench.selection()
+                if item in self.mod_items]
+
+    def _on_mod_workbench_double_click(self, event):
+        if self.parent.translation_manager.is_translating:
+            return 'break'
+        tree = self.parent.mod_workbench
+        item = tree.identify_row(event.y)
+        if item not in self.mod_items:
+            return
+        tree.selection_set(item)
+        tree.focus(item)
+        tree.see(item)
+        self.parent.mod_combo.current(int(item))
+        self.parent.on_mod_change()
+        return 'break'
+
+    def update_status(self, mod, file_status=None):
+        """更新工作台中的 MOD 状态。"""
+        for item, candidate in self.mod_items.items():
+            if candidate is not mod:
+                continue
+            progress = f'{mod.completed / mod.total:.0%}' if mod.total else '—'
+            self.parent.mod_workbench.item(item, values=(
+                mod.name, str(mod.path), f'{mod.completed}/{mod.total}', progress,
+                self._display_mod_status(mod)))
+            break
+
+    @staticmethod
+    def _display_mod_status(mod):
+        """将状态转换为表格显示文本。"""
+        status = mod.status
+        if status == '已完成':
+            return '✓ 已完成'
+        if status in ('未翻译', '部分翻译', '翻译中', '翻译失败', '已取消', '扫描失败'):
+            return f'✗ {status}'
+        details = [item.detail for item in mod.files if item.detail]
+        return f'{status}：{details[0]}' if status == '待确认' and details else status
     
     def _create_log_section(self, parent: ModernFrame) -> None:
         """创建日志区域"""
@@ -609,6 +710,10 @@ class GUIManager:
             self.parent.extract_i18n_btn.config(text=self.parent.get_ui_text("extract_i18n"))
         if hasattr(self.parent, 'translate_btn'):
             self.parent.translate_btn.config(text=self.parent.get_ui_text("auto_translate"))
+        if hasattr(self.parent, 'translate_all_btn'):
+            self.parent.translate_all_btn.config(text='翻译全部')
+        if hasattr(self.parent, 'translate_selected_btn'):
+            self.parent.translate_selected_btn.config(text='翻译选中')
         if hasattr(self.parent, 'compress_btn'):
             self.parent.compress_btn.config(text=self.parent.get_ui_text("recompress"))
         
@@ -879,6 +984,8 @@ class GUIManager:
     
     def edit_translation_dialog(self, index, original_text, current_translation):
         """显示翻译编辑对话框"""
+        if self.parent.translation_manager.is_translating:
+            return
         # 创建自定义对话框，但先不显示
         dialog = tk.Toplevel(self.root)
         dialog.title(self.parent.get_ui_text("edit_translation_dialog"))
@@ -984,6 +1091,8 @@ class GUIManager:
                     key = self.parent.current_translation_keys[index]
                     if hasattr(self.parent, 'current_translation_data'):
                         self.parent.current_translation_data[key] = new_text
+                    if hasattr(self.parent, 'current_document'):
+                        self.parent.current_document.completed_paths.add(key)
                 
                 self.parent.log_message(self.parent.get_ui_text("translation_updated"))
                 dialog.destroy()
@@ -1142,6 +1251,7 @@ class GUIManager:
             save_content.pack(fill=tk.X, padx=5, pady=5)
             
             ModernLabel(save_content, text=self.parent.get_ui_text("auto_save_interval_label")).pack(anchor=tk.W)
+            ModernLabel(save_content, text='翻译中仅更新预览；全部校验通过后才写入 MOD。').pack(anchor=tk.W)
             
             save_input_frame = ModernFrame(save_content, style="default")
             save_input_frame.pack(fill=tk.X, pady=(5, 0))

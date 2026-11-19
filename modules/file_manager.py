@@ -6,8 +6,12 @@ import zipfile
 import subprocess
 import threading
 import re
+import tkinter as tk
 from pathlib import Path
-from tkinter import filedialog
+from tkinter import filedialog, messagebox
+from tkinter import ttk
+from .mod_translation import TranslationFile, discover_tasks, scan_mods, atomic_write, read_optional
+from .translation_core import TranslationCore
 
 class FileManager:
     """文件操作管理类"""
@@ -21,7 +25,10 @@ class FileManager:
         self.app = app_instance
         
         # 目录路径
-        if getattr(sys, 'frozen', False):
+        configured_work_dir = os.environ.get('STARDEW_TRANSLATOR_DATA_DIR')
+        if configured_work_dir:
+            self.work_dir = Path(configured_work_dir).expanduser().resolve()
+        elif getattr(sys, 'frozen', False):
             # 打包后的exe环境，使用exe文件所在目录
             self.work_dir = Path(os.path.dirname(sys.executable))
         else:
@@ -32,6 +39,11 @@ class FileManager:
         self.extract_dir = self.data_dir / "2Extract"
         self.i18n_dir = self.data_dir / "3Completei18n"
         self.compress_dir = self.data_dir / "4Compress"
+        self.mod_root = self.extract_dir
+        self.available_mods = []
+        self.selection_generation = 0
+        self.scan_generation = 0
+        self.scanning = False
         
         # 创建必要的目录
         self._create_directories()
@@ -204,105 +216,88 @@ class FileManager:
             with open(target_file_path, 'w', encoding='utf-8') as f:
                  json.dump(data, f, ensure_ascii=False, indent=4)
     
-    def _load_comparison_data_async(self):
+    def _load_comparison_data_async(self, task, generation):
         """在后台线程中加载对比数据"""
         try:
-            # 获取当前选择的MOD和文件
-            selected_mod = self.app.gui_manager.parent.mod_combo.get()
-            selected_file = self.app.gui_manager.parent.file_combo.get()
-            
-            if not selected_mod or not selected_file:
-                # 没有选择mod或文件时清空文本显示区域
-                self.app.root.after(0, self._clear_comparison_display)
+            if self.app.translation_manager.is_translating:
                 return
-            
-            # 构建文件路径
-            translation_file_path = self.i18n_dir / "Translation" / selected_mod / selected_file
-            original_file_path = self.find_matching_original_file(translation_file_path, selected_mod)
-            
-            if not translation_file_path.exists():
-                # 翻译文件不存在时清空文本显示区域
-                self.app.root.after(0, self._clear_comparison_display)
-                return
-            
-            # 加载翻译文件
-            translation_data = self.load_json_with_comments(translation_file_path)
-            
-            # 设置当前翻译文件路径，用于保存功能
-            self.app.current_translation_file = translation_file_path
-            
-            # 加载原文文件
-            original_data = {}
-            if original_file_path and original_file_path.exists():
-                original_data = self.load_json_with_comments(original_file_path)
-            
-            # 在主线程中显示对比数据
-            self.app.root.after(0, self.app.translation_manager.display_comparison_data, translation_data, original_data)
-            
-        except Exception as e:
-            # 加载失败时清空文本显示区域
-            self.app.root.after(0, self._clear_comparison_display)
-            self.app.root.after(0, self.app.log_message, f"刷新对比数据失败: {str(e)}", "ERROR")
-    
+            document = TranslationFile(task)
+            translations = dict(document.entries)
+            reusable = document.reusable(TranslationCore(self.app.config_manager.get('glossary', {})))
+            document.completed_paths.update(reusable)
+            translations.update(reusable)
+            self.app.root.after(0, self._display_document, document, translations, generation)
+        except Exception as error:
+            self.app.root.after(0, self.app.log_message, f'加载翻译文件失败：{error}', 'ERROR')
+
+    def _display_document(self, document, translations, generation):
+        if self.app.translation_manager.is_translating or generation != self.selection_generation:
+            return
+        self.app.current_document = document
+        self.app.current_translation_file = document.task.target
+        self.app.translation_manager.display_comparison_data(translations, document.entries)
+
     def refresh_comparison_data(self):
         """刷新对比数据"""
         # 在后台线程中处理
-        threading.Thread(target=self._load_comparison_data_async, daemon=True).start()
+        self.on_file_change()
     
     def refresh_mod_list(self):
         """刷新MOD列表"""
-        def scan_mods():
+        if self.app.translation_manager.is_translating:
+            self.app.log_message('请先停止当前翻译，再刷新 MOD 列表', 'WARNING')
+            return
+        language = self.app.language_codes.get(self.app.target_language_var.get(), 'zh')
+        root = self.mod_root
+        self.scan_generation += 1
+        generation = self.scan_generation
+        self.scanning = True
+
+        def scan_directory():
             """在后台线程中扫描MOD"""
             try:
-                available_mods = []
-                
-                # 获取3Completei18n目录
-                original_dir = self.i18n_dir / "Original"
-                
-                if not original_dir.exists():
-                    self.app.root.after(0, self.app.log_message, "Original目录不存在，请先提取i18n文件")
-                    return
-                
-                # 查找所有mod目录（包含JSON文件的目录）
-                for mod_path in original_dir.iterdir():
-                    if mod_path.is_dir():
-                        # 检查是否包含JSON文件
-                        json_files = list(mod_path.rglob("*.json"))
-                        if json_files:
-                            available_mods.append({
-                                'name': mod_path.name,
-                                'path': mod_path,
-                                'files': json_files
-                            })
-                
+                glossary = self.app.config_manager.get('glossary', {})
+                available_mods = scan_mods(root, language, TranslationCore(glossary))
                 # 在主线程中更新UI
-                self.app.root.after(0, self._update_mod_list_ui, available_mods)
+                self.app.root.after(0, self._update_mod_list_ui, available_mods, generation)
                 
             except Exception as e:
                 self.app.root.after(0, self.app.log_message, f"刷新MOD列表失败: {str(e)}", "ERROR")
+                self.app.root.after(0, self._update_mod_list_ui, [], generation)
         
         # 在后台线程中执行扫描
-        threading.Thread(target=scan_mods, daemon=True).start()
+        threading.Thread(target=scan_directory, daemon=True).start()
     
-    def _update_mod_list_ui(self, available_mods):
+    def _update_mod_list_ui(self, available_mods, generation):
         """在主线程中更新MOD列表UI"""
         try:
+            if generation != self.scan_generation:
+                return
+            self.scanning = False
             self.available_mods = available_mods
+            self.app.available_mods = available_mods
+            self.selection_generation += 1
+            self.app.current_document = None
             
             # 更新下拉框
-            mod_names = [mod['name'] for mod in self.available_mods]
+            mod_names = [mod.name for mod in self.available_mods]
             self.app.gui_manager.parent.mod_combo['values'] = mod_names
+            if hasattr(self.app, 'workbench'):
+                self.app.workbench.refresh_mods(self.available_mods)
             
             if mod_names:
-                self.app.gui_manager.parent.mod_combo.set(mod_names[0])
+                self.app.gui_manager.parent.mod_combo.current(0)
                 self.app.log_message(self.app.ui_text_manager.get_text("found_mods").format(len(mod_names), ', '.join(mod_names)))
                 # 在后台线程中加载MOD数据
-                threading.Thread(target=self._load_mod_data_async, daemon=True).start()
+                self.on_mod_change()
             else:
                 self.app.gui_manager.parent.mod_combo.set('')
                 # 清空文件下拉菜单和文本显示区域
                 self.app.gui_manager.parent.file_combo.set('')
                 self.app.gui_manager.parent.file_combo['values'] = []
+                self.app.current_mod_path = None
+                self.app.available_files = []
+                self.app.current_file_index = -1
                 if hasattr(self.app, 'original_listbox'):
                     self.app.original_listbox.delete(0, 'end')
                 if hasattr(self.app, 'translation_listbox'):
@@ -313,74 +308,44 @@ class FileManager:
             self.app.log_message(f"更新MOD列表UI失败: {str(e)}", "ERROR")
     
     def _load_mod_data_async(self):
-        """在后台线程中加载MOD数据"""
+        """切换已扫描的 MOD，文件读取另交后台线程。"""
         try:
-            selected_mod_name = self.app.gui_manager.parent.mod_combo.get()
-            if not selected_mod_name:
-                # 没有选择mod时清空界面
-                self.app.root.after(0, self._clear_file_ui)
+            index = self.app.gui_manager.parent.mod_combo.current()
+            self.selection_generation += 1
+            self.app.current_document = None
+            if not 0 <= index < len(self.available_mods):
+                self._clear_file_ui()
                 return
-                
-            # 查找对应的MOD信息
-            selected_mod = None
-            for mod in self.available_mods:
-                if mod['name'] == selected_mod_name:
-                    selected_mod = mod
-                    break
-            
-            if selected_mod:
-                # 设置当前MOD路径
-                self.app.current_mod_path = selected_mod['path']
-                self.app.root.after(0, self.app.log_message, self.app.ui_text_manager.get_text("switch_to_mod").format(selected_mod['name']))
-                
-                # 在后台加载文件列表和对比数据
-                self._load_file_list_async()
-                self._load_comparison_data_async()
-            else:
-                # 找不到对应mod时清空界面
-                self.app.root.after(0, self._clear_file_ui)
+            selected_mod = self.available_mods[index]
+            # 设置当前MOD路径
+            self.app.current_mod_path = selected_mod.path
+            self.app.current_mod_tasks = selected_mod.tasks
+            self.app.log_message(self.app.ui_text_manager.get_text("switch_to_mod").format(selected_mod.name))
+
+            # 在后台加载文件列表和对比数据
+            self._load_file_list_async()
         except Exception as e:
             # 加载失败时清空界面
-            self.app.root.after(0, self._clear_file_ui)
-            self.app.root.after(0, self.app.log_message, f"MOD数据加载失败: {str(e)}", "ERROR")
+            self._clear_file_ui()
+            self.app.log_message(f"MOD数据加载失败: {str(e)}", "ERROR")
     
     def on_mod_change(self, event=None):
         """MOD选择改变事件"""
+        if self.app.translation_manager.is_translating:
+            return
         # 在后台线程中处理MOD切换
-        threading.Thread(target=self._load_mod_data_async, daemon=True).start()
+        self._load_mod_data_async()
     
     def _load_file_list_async(self):
         """在后台线程中加载文件列表"""
         try:
-            available_files = []
-            
-            if hasattr(self.app, 'current_mod_path') and self.app.current_mod_path:
-                # 查找当前MOD的所有JSON文件
-                translation_dir = self.i18n_dir / "Translation" / self.app.current_mod_path.name
-                if translation_dir.exists():
-                    json_files = list(translation_dir.rglob('*.json'))
-                    if json_files:
-                        for json_file in json_files:
-                            # 获取相对于translation目录的路径
-                            rel_path = json_file.relative_to(translation_dir)
-                            available_files.append({
-                                'name': str(rel_path),
-                                'path': json_file
-                            })
-                        
-                        # 在主线程中更新UI
-                        self.app.root.after(0, self._update_file_list_ui, available_files)
-                    else:
-                        # 没有找到文件时清空界面
-                        self.app.root.after(0, self._clear_file_ui)
-                        self.app.root.after(0, self.app.log_message, self.app.get_ui_text("no_localization_files_found"))
-                else:
-                    # 目录不存在时清空界面
-                    self.app.root.after(0, self._clear_file_ui)
-                    self.app.root.after(0, self.app.log_message, self.app.get_ui_text("mod_translation_dir_not_exist"))
-        except Exception as e:
-            self.app.root.after(0, self.app.log_message, self.app.get_ui_text("refresh_file_list_failed").format(str(e)), "ERROR")
-    
+            tasks = getattr(self.app, 'current_mod_tasks', [])
+            available_files = [{'name': str(task.target.relative_to(task.root)), 'path': task.source, 'task': task}
+                               for task in tasks]
+            self._update_file_list_ui(available_files)
+        except Exception as error:
+            self.app.root.after(0, self.app.log_message, f'加载文件列表失败：{error}', 'ERROR')
+
     def _update_file_list_ui(self, available_files):
         """在主线程中更新文件列表UI"""
         try:
@@ -395,22 +360,22 @@ class FileManager:
                 self.app.gui_manager.parent.file_combo.set(file_names[0])
                 self.app.current_file_index = 0
                 self.app.log_message(self.app.get_ui_text("found_localization_files").format(len(file_names)))
+                self.on_file_change()
             else:
                 # 没有文件时清空文本显示区域
-                if hasattr(self.app, 'original_listbox'):
-                    self.app.original_listbox.delete(0, 'end')
-                if hasattr(self.app, 'translation_listbox'):
-                    self.app.translation_listbox.delete(0, 'end')
+                self._clear_file_ui()
         except Exception as e:
             self.app.log_message(self.app.get_ui_text("refresh_file_list_failed").format(str(e)), "ERROR")
     
     def refresh_file_list(self):
         """刷新当前MOD的文件列表"""
-        # 在后台线程中处理
-        threading.Thread(target=self._load_file_list_async, daemon=True).start()
+        if not self.app.translation_manager.is_translating:
+            self._load_file_list_async()
     
     def on_file_change(self, event=None):
         """文件选择改变事件"""
+        if self.app.translation_manager.is_translating:
+            return
         try:
             selected_file = self.app.gui_manager.parent.file_combo.get()
             if not selected_file:
@@ -437,7 +402,12 @@ class FileManager:
             switch_text = self.app.ui_text_manager.get_text("switch_to_file")
             self.app.log_message(switch_text.format(selected_file, getattr(self.app, 'current_file_index', -1)))
             # 在后台线程中重新加载对比文件
-            threading.Thread(target=self._load_comparison_data_async, daemon=True).start()
+            self.selection_generation += 1
+            self.app.current_document = None
+            if self.app.current_file_index >= 0:
+                task = self.app.available_files[self.app.current_file_index]['task']
+                threading.Thread(target=self._load_comparison_data_async,
+                                 args=(task, self.selection_generation), daemon=True).start()
             
         except Exception as e:
             self.app.log_message(f"切换文件失败: {str(e)}", "ERROR")
@@ -475,6 +445,9 @@ class FileManager:
                 for file_path in file_paths:
                     src_path = Path(file_path)
                     dst_path = self.import_dir / src_path.name
+                    if dst_path.exists():
+                        self.app.log_message(f'保留已导入文件，跳过同名文件：{src_path.name}', 'WARNING')
+                        continue
                     shutil.copy2(src_path, dst_path)
                     self.app.log_message(self.app.get_ui_text("imported_file").format(src_path.name))
                 
@@ -483,14 +456,111 @@ class FileManager:
                 self.app.log_message(self.app.get_ui_text("import_failed").format(str(e)), "ERROR")
         
         threading.Thread(target=import_files, daemon=True).start()
+
+    def select_mod_directory(self):
+        """直接选择已安装 MOD 或包含多个 MOD 的目录。"""
+        if self.app.translation_manager.is_translating:
+            self.app.log_message('请先停止当前翻译，再选择目录', 'WARNING')
+            return
+        selected = self._select_directory()
+        if selected:
+            self.mod_root = Path(selected).resolve()
+            self.app.log_message(f'直接处理目录：{self.mod_root}')
+            self.refresh_mod_list()
+
+    def _select_directory(self):
+        """显示可调整大小的目录选择器，便于浏览深层目录。"""
+        dialog = tk.Toplevel(self.app.root)
+        dialog.title('选择 MOD 或 Mods 目录')
+        width = min(1100, dialog.winfo_screenwidth() - 64)
+        height = min(750, dialog.winfo_screenheight() - 80)
+        dialog.geometry(f'{width}x{height}')
+        dialog.minsize(min(800, width), min(520, height))
+        dialog.transient(self.app.root)
+        dialog.columnconfigure(0, weight=1)
+        dialog.rowconfigure(1, weight=1)
+
+        initial = self.mod_root if self.mod_root.exists() else Path.home()
+        current = [initial.resolve()]
+        result = [None]
+        path_var = tk.StringVar(value=str(current[0]))
+        directories = []
+
+        path_frame = ttk.Frame(dialog, padding=(12, 12, 12, 6))
+        path_frame.grid(row=0, column=0, sticky='ew')
+        path_frame.columnconfigure(0, weight=1)
+        path_entry = ttk.Entry(path_frame, textvariable=path_var)
+        path_entry.grid(row=0, column=0, sticky='ew', padx=(0, 8))
+
+        list_frame = ttk.Frame(dialog, padding=(12, 0, 12, 6))
+        list_frame.grid(row=1, column=0, sticky='nsew')
+        list_frame.columnconfigure(0, weight=1)
+        list_frame.rowconfigure(0, weight=1)
+        directory_list = tk.Listbox(list_frame, exportselection=False)
+        directory_list.grid(row=0, column=0, sticky='nsew')
+        scrollbar = ttk.Scrollbar(list_frame, orient=tk.VERTICAL, command=directory_list.yview)
+        scrollbar.grid(row=0, column=1, sticky='ns')
+        horizontal = ttk.Scrollbar(list_frame, orient=tk.HORIZONTAL, command=directory_list.xview)
+        horizontal.grid(row=1, column=0, sticky='ew')
+        directory_list.configure(yscrollcommand=scrollbar.set, xscrollcommand=horizontal.set)
+
+        def show_directory(path):
+            path = Path(path).expanduser()
+            if not path.is_dir():
+                messagebox.showerror('目录不存在', f'无法打开目录：{path}', parent=dialog)
+                return
+            try:
+                entries = sorted((item for item in path.iterdir()
+                                  if item.is_dir() and not item.is_symlink()),
+                                 key=lambda item: item.name.casefold())
+            except OSError as error:
+                messagebox.showerror('目录不可读', str(error), parent=dialog)
+                return
+            current[0] = path.resolve()
+            directories[:] = entries
+            path_var.set(str(current[0]))
+            directory_list.delete(0, tk.END)
+            for entry in directories:
+                directory_list.insert(tk.END, entry.name)
+
+        def enter_selected(event=None):
+            selection = directory_list.curselection()
+            if selection:
+                show_directory(directories[selection[0]])
+
+        def go_to_path(event=None):
+            show_directory(path_var.get())
+
+        def go_up():
+            parent = current[0].parent
+            if parent != current[0]:
+                show_directory(parent)
+
+        def choose_current():
+            result[0] = str(current[0])
+            dialog.destroy()
+
+        directory_list.bind('<Double-1>', enter_selected)
+        path_entry.bind('<Return>', go_to_path)
+        ttk.Button(path_frame, text='前往', command=go_to_path).grid(row=0, column=1)
+        show_directory(current[0])
+
+        buttons = ttk.Frame(dialog, padding=(12, 0, 12, 12))
+        buttons.grid(row=2, column=0, sticky='ew')
+        ttk.Button(buttons, text='上一级', command=go_up).pack(side=tk.LEFT)
+        ttk.Button(buttons, text='进入', command=enter_selected).pack(side=tk.LEFT, padx=8)
+        ttk.Button(buttons, text='取消', command=dialog.destroy).pack(side=tk.RIGHT)
+        ttk.Button(buttons, text='选择当前目录', command=choose_current).pack(side=tk.RIGHT, padx=8)
+        dialog.protocol('WM_DELETE_WINDOW', dialog.destroy)
+        dialog.grab_set()
+        dialog.wait_window()
+        return result[0]
     
     def extract_mods(self):
         """解压 MOD 文件"""
         def extract():
             try:
                 # 清理解压目录
-                if self.extract_dir.exists():
-                    shutil.rmtree(self.extract_dir)
                 self.extract_dir.mkdir(parents=True, exist_ok=True)
                 
                 # 查找压缩文件
@@ -505,6 +575,9 @@ class FileManager:
                 for archive_file in archive_files:
                     mod_name = archive_file.stem
                     extract_path = self.extract_dir / mod_name
+                    if extract_path.exists():
+                        self.app.log_message(f'保留已有目录，跳过解压：{extract_path}', 'WARNING')
+                        continue
                     
                     self.app.log_message(self.app.get_ui_text("extracting_file").format(archive_file.name))
                     
@@ -532,89 +605,12 @@ class FileManager:
         threading.Thread(target=extract, daemon=True).start()
     
     def extract_i18n(self):
-        """提取 i18n 文件"""
-        def extract():
-            try:
-                # 清理 i18n 目录
-                if self.i18n_dir.exists():
-                    shutil.rmtree(self.i18n_dir)
-                self.i18n_dir.mkdir(parents=True, exist_ok=True)
-                
-                # 创建Original和Translation文件夹
-                original_dir = self.i18n_dir / "Original"
-                translation_dir = self.i18n_dir / "Translation"
-                original_dir.mkdir(parents=True, exist_ok=True)
-                translation_dir.mkdir(parents=True, exist_ok=True)
-                
-                target_lang = self.app.target_language_var.get()
-                lang_prefix = self.app.language_codes.get(target_lang, "en")
-                
-                # 遍历解压目录中的所有 MOD
-                for mod_dir in self.extract_dir.iterdir():
-                    if not mod_dir.is_dir():
-                        continue
-                    
-                    self.app.log_message(self.app.get_ui_text("processing_mod").format(mod_dir.name))
-                    
-                    # 查找所有 i18n 文件夹
-                    i18n_folders = list(mod_dir.rglob("i18n"))
-                    
-                    for i18n_folder in i18n_folders:
-                        if not i18n_folder.is_dir():
-                            continue
-                        
-                        # 计算相对路径
-                        rel_path = i18n_folder.relative_to(self.extract_dir)
-                        
-                        # 优先查找default.json，如果没有则查找其他JSON文件
-                        default_json = i18n_folder / "default.json"
-                        source_json = None
-                        
-                        if default_json.exists():
-                            source_json = default_json
-                        else:
-                            # 如果没有default.json，查找其他JSON文件
-                            json_files = list(i18n_folder.glob("*.json"))
-                            if json_files:
-                                source_json = json_files[0]  # 选择第一个找到的JSON文件
-                        
-                        if source_json:
-                            # 复制原文文件到Original目录
-                            target_original_dir = original_dir / rel_path
-                            target_original_dir.mkdir(parents=True, exist_ok=True)
-                            target_original = target_original_dir / source_json.name
-                            shutil.copy2(source_json, target_original)
-                            
-                            # 复制文件到Translation目录
-                            target_translation_dir = translation_dir / rel_path
-                            target_translation_dir.mkdir(parents=True, exist_ok=True)
-                            
-                            # 如果是default.json，重命名为目标语言
-                            if source_json.name.lower() == "default.json":
-                                target_translation = target_translation_dir / f"{lang_prefix}.json"
-                            else:
-                                # 其他文件保持原名
-                                target_translation = target_translation_dir / source_json.name
-                            
-                            shutil.copy2(source_json, target_translation)
-                            
-                            self.app.log_message(self.app.get_ui_text("extract_i18n_file").format(rel_path / source_json.name, target_translation.name))
-                
-                # 刷新mod列表
-                self.app.refresh_mod_list()
-                
-                # 延迟输出完成消息，确保在所有异步操作完成后显示
-                def delayed_completion_message():
-                    import time
-                    time.sleep(2)  # 等待异步操作完成
-                    self.app.root.after(0, self.app.log_message, self.app.get_ui_text("i18n_extract_completed"))
-                
-                threading.Thread(target=delayed_completion_message, daemon=True).start()
-                
-            except Exception as e:
-                self.app.log_message(self.app.get_ui_text("i18n_extract_failed").format(str(e)), "ERROR")
-        
-        threading.Thread(target=extract, daemon=True).start()
+        """扫描解压后的 MOD，直接定位对应的正式文件。"""
+        if self.app.translation_manager.is_translating:
+            return
+        self.mod_root = self.extract_dir
+        self.refresh_mod_list()
+
     
 
     
@@ -769,96 +765,89 @@ class FileManager:
     def save_translation_files(self):
         """保存翻译文件"""
         try:
-            translation_dir = self.i18n_dir / "Translation"
-            if not translation_dir.exists():
-                self.app.log_message(self.app.get_ui_text("translation_dir_not_exist"), "ERROR")
-                return
-            
-            # 获取当前显示的数据
-            if not hasattr(self.app, 'current_translation_data'):
-                self.app.log_message(self.app.get_ui_text("no_translation_data_to_save"), "WARNING")
-                return
-            
-            # 更新翻译数据
-            for i in range(self.app.translation_listbox.size()):
-                if i < len(self.app.current_translation_keys):
-                    key = self.app.current_translation_keys[i]
-                    value = self.app.translation_listbox.get(i)
-                    self.app.current_translation_data[key] = value
-            
-            # 保存到文件
-            if hasattr(self.app, 'current_translation_file'):
-                # 查找对应的原文件以保持格式
-                original_file = None
-                if hasattr(self.app, 'current_mod_path'):
-                    mod_name = self.app.current_mod_path.name
-                    original_file = self.find_matching_original_file(self.app.current_translation_file, mod_name)
-                
-                if original_file and original_file.exists():
-                    # 使用保持格式的方法保存
-                    self.save_json_with_original_format(
-                        self.app.current_translation_data, 
-                        original_file, 
-                        self.app.current_translation_file
-                    )
-                else:
-                    # 如果找不到原文件，使用标准JSON保存
-                    with open(self.app.current_translation_file, 'w', encoding='utf-8') as f:
-                        json.dump(self.app.current_translation_data, f, ensure_ascii=False, indent=2)
-                
-                self.app.log_message(self.app.get_ui_text("translation_file_saved").format(self.app.current_translation_file.name))
-            else:
-                self.app.log_message(self.app.get_ui_text("cannot_determine_save_path"), "ERROR")
-                
+            if self.app.translation_manager.is_translating:
+                raise ValueError('请先等待翻译结束再手动保存')
+            document = getattr(self.app, 'current_document', None)
+            if document is None:
+                raise ValueError('请先加载翻译文件')
+            if document.completed_paths != document.entries.keys():
+                raise ValueError('仍有未完成的条目；请完成翻译或逐条确认编辑后再保存')
+            translations = dict(self.app.current_translation_data)
+            for index, key in enumerate(self.app.current_translation_keys):
+                translations[key] = self.app.translation_listbox.get(index)
+            document.save(translations, TranslationCore(self.app.config_manager.get('glossary', {})))
+            self.app.log_message(f'已安全保存：{document.task.target}')
         except Exception as e:
             self.app.log_message(self.app.get_ui_text("save_translation_file_failed").format(str(e)), "ERROR")
+
+    def restore_translation_backup(self):
+        """恢复所选文件的历史备份，同时保留恢复前的版本。"""
+        if self.app.translation_manager.is_translating:
+            return
+        document = getattr(self.app, 'current_document', None)
+        if document is None:
+            self.app.log_message('请先选择需要恢复的文件', 'WARNING')
+            return
+        target = document.task.target
+        selected = filedialog.askopenfilename(title='选择该文件的历史备份', initialdir=target.parent,
+                                             filetypes=[('历史备份', target.name + '.bak*')], parent=self.app.root)
+        if not selected:
+            return
+        backup = Path(selected)
+        if backup.parent.resolve() != target.parent.resolve() or not re.fullmatch(re.escape(target.name) + r'\.bak(?:\.\d+)?', backup.name):
+            self.app.log_message('请选择当前目标文件的同目录备份', 'ERROR')
+            return
+        if not messagebox.askyesno('恢复备份', f'将恢复 {target.name}。当前内容会先另存为历史备份。是否继续？', parent=self.app.root):
+            return
+        try:
+            atomic_write(target, backup.read_bytes(), read_optional(target))
+            self.app.log_message(f'已恢复备份：{backup.name}')
+            self.on_file_change()
+        except Exception as error:
+            self.app.log_message(f'恢复失败：{error}', 'ERROR')
     
     def recompress_mods(self):
         """打包MOD MOD"""
+        if self.app.translation_manager.is_translating or self.scanning:
+            self.app.log_message('请先等待扫描和翻译结束再打包', 'WARNING')
+            return
+        mods = list(self.available_mods)
+        language_code = self.app.language_codes.get(self.app.target_language_var.get(), 'zh')
+
         def compress():
             try:
-                # 清理压缩目录
-                if self.compress_dir.exists():
-                    shutil.rmtree(self.compress_dir)
+                # 保留已有压缩包
                 self.compress_dir.mkdir(parents=True, exist_ok=True)
-                
-                # 获取当前选择的翻译语言代码
-                selected_language = self.app.target_language_var.get()
-                language_code = self.app.language_codes.get(selected_language, "zh")
-                
-                # 只遍历Translation目录内的 MOD
-                translation_dir = self.i18n_dir / "Translation"
-                if not translation_dir.exists():
-                    self.app.log_message(self.app.get_ui_text("translation_dir_not_exist"), "ERROR")
+                if not mods:
+                    self.app.log_message('请先扫描 MOD 目录', 'WARNING')
                     return
-                
-                for mod_dir in translation_dir.iterdir():
-                    if not mod_dir.is_dir():
-                        continue
+                for mod in mods:
+                    mod_dir = mod.path
                     
                     self.app.log_message(self.app.get_ui_text("compressing_mod").format(mod_dir.name))
                     
                     # 创建带语言前缀的 ZIP 文件名
                     zip_filename = f"{language_code}_{mod_dir.name}.zip"
                     zip_path = self.compress_dir / zip_filename
+                    number = 1
+                    while zip_path.exists():
+                        zip_path = self.compress_dir / f'{language_code}_{mod_dir.name}.{number}.zip'
+                        number += 1
                     
-                    with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
+                    with zipfile.ZipFile(zip_path, 'x', zipfile.ZIP_DEFLATED) as zipf:
                         for file_path in mod_dir.rglob('*'):
-                            if file_path.is_file():
-                                arcname = file_path.relative_to(mod_dir)
+                            if (file_path.is_file() and not file_path.is_symlink()
+                                    and not any(parent.is_symlink() for parent in file_path.parents)
+                                    and not re.search(r'\.bak(?:\.\d+)?$|\.pending\.', file_path.name)
+                                    and file_path.resolve() != zip_path.resolve()):
+                                arcname = Path(mod_dir.name) / file_path.relative_to(mod_dir)
                                 zipf.write(file_path, arcname)
                     
                     self.app.log_message(self.app.get_ui_text("compress_success").format(zip_path.name))
                 
                 self.app.log_message(self.app.get_ui_text("recompress_completed"))
                 
-                # 压缩完成后自动打开4Compress文件夹
-                try:
-                    if self.compress_dir.exists():
-                        subprocess.run(['explorer', str(self.compress_dir)], check=False)
-                except Exception as folder_error:
-                    # 打开文件夹失败不影响主要功能，只记录日志
-                    print(f"打开压缩文件夹失败: {folder_error}")
+                self.app.log_message(f'压缩文件目录：{self.compress_dir}')
             except Exception as e:
                 self.app.log_message(self.app.get_ui_text("compress_error").format(str(e)), "ERROR")
         
@@ -943,6 +932,8 @@ class FileManager:
             self.app.current_translation_data = {}
             self.app.current_translation_keys = []
             self.app.current_translation_file = None
+            self.app.current_document = None
+            self.app.current_file_index = -1
             self.app.available_files = []
             
         except Exception as e:
